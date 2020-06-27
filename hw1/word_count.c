@@ -54,6 +54,7 @@ word_count_t *add_word(word_count_list_t *wclist, char *word) {
   word_count_t *wc = find_word(wclist, word);
   if (wc != NULL) {
     wc->count++;
+    free(word);
   } else if ((wc = malloc(sizeof(word_count_t))) != NULL) {
     wc->word = word;
     wc->count = 1;

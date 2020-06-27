@@ -42,6 +42,7 @@ word_count_t *find_word(word_count_list_t *wclist, char *word) {
 
 word_count_t *add_word(word_count_list_t *wclist, char *word) {
   /* TODO */
+  return NULL;
 }
 
 void fprint_words(word_count_list_t *wclist, FILE *outfile) {
