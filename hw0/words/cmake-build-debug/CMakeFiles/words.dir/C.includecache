@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/zhaoxiaofeng/Course material/CS162/repo/student0/hw0/words/word_count.c
+word_count.h
+/Users/zhaoxiaofeng/Course material/CS162/repo/student0/hw0/words/word_count.h
+
+/Users/zhaoxiaofeng/Course material/CS162/repo/student0/hw0/words/word_count.h
+ctype.h
+-
+stdbool.h
+-
+stddef.h
+-
+stdio.h
+-
+string.h
+-
+stdlib.h
+-
+

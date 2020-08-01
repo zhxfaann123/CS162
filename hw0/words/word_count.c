@@ -40,12 +40,31 @@ size_t len_words(WordCount *wchead) {
 
 WordCount *find_word(WordCount *wchead, char *word) {
   /* Return count for word, if it exists */
+  while(wchead != NULL) {
+    if (strcmp(wchead->word, word) == 0) {
+      return wchead;
+    } else {
+      wchead = wchead->next;
+    }
+  }
   WordCount *wc = NULL;
   return wc;
 }
 
 void add_word(WordCount **wclist, char *word) {
   /* If word is present in word_counts list, increment the count, otw insert with count 1. */
+  WordCount *wchead = *wclist;
+  WordCount *wc = find_word(wchead, word);
+  if (wc == NULL) {
+    WordCount *newCW = {
+      word,
+      1,
+      wchead
+    };
+    *wclist = newCW;
+  } else {
+    wc->count++;
+  }
 }
 
 void fprint_words(WordCount *wchead, FILE *ofile) {

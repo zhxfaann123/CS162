@@ -46,7 +46,17 @@ WordCount *word_counts = NULL;
  */
 int num_words(FILE* infile) {
   int num_words = 0;
-
+  while(1) {
+    int c = fgetc(infile);
+    if (isalpha(c)) {
+      continue;
+    } else if (c != EOF) {
+      num_words++;
+    } else {
+      num_words++;
+      break;
+    }
+  }
   return num_words;
 }
 
@@ -57,6 +67,16 @@ int num_words(FILE* infile) {
  * Useful functions: fgetc(), isalpha(), tolower(), add_word().
  */
 void count_words(WordCount **wclist, FILE *infile) {
+  while(true) {
+    int c = fgetc(infile);
+    char* word;
+    if (c == EOF) {
+      break;
+    } else if (!isalpha(c)) {
+
+    }
+  }
+
 }
 
 /*
@@ -64,7 +84,11 @@ void count_words(WordCount **wclist, FILE *infile) {
  * Useful function: strcmp().
  */
 static bool wordcount_less(const WordCount *wc1, const WordCount *wc2) {
-  return 0;
+  if (strcmp(wc1->word, wc2->word) < 0) {
+      return 1;
+  } else {
+    return 0;
+  }
 }
 
 // In trying times, displays a helpful message.
