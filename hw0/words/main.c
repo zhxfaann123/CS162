@@ -67,13 +67,21 @@ int num_words(FILE* infile) {
  * Useful functions: fgetc(), isalpha(), tolower(), add_word().
  */
 void count_words(WordCount **wclist, FILE *infile) {
+    char *word = (char *)malloc(sizeof(char)* (MAX_WORD_LEN+1));
+    int len_word = 0;
   while(true) {
     int c = fgetc(infile);
-    char* word;
     if (c == EOF) {
-      break;
-    } else if (!isalpha(c)) {
-
+        add_word(wclist, word);
+        free(word);
+        break;
+    } else if (isalpha(c)) {
+        *(word + len_word) = (char) c;
+        len_word++;
+    } else {
+        *(word + len_word) = '\0';
+        add_word(wclist, word);
+        len_word = 0;
     }
   }
 
@@ -116,6 +124,9 @@ int main (int argc, char *argv[]) {
 
   // Variables for command line argument parsing
   int i;
+
+  //Clarification by Xiaofeng: option -- the name of the structure.
+  //                           long_options -- the name of a specific structure.
   static struct option long_options[] =
   {
       {"count", no_argument, 0, 'c'},
@@ -156,6 +167,20 @@ int main (int argc, char *argv[]) {
     // The first file can be found at argv[optind]. The last file can be
     // found at argv[argc-1]. You'll need to count words in all specified
     // files.
+    for (int idx_file = optind; idx_file <= argc -1; idx_file++) {
+        char *address = argv[optind];
+        FILE *file = fopen(address, "r");
+        count_words(&word_counts, file);
+        fclose(file);
+    }
+
+    // Sum the total number of words.
+    WordCount *ptr = word_counts;
+    while(ptr != NULL) {
+        total_words += ptr->count;
+        ptr = ptr -> next;
+    }
+
   }
 
   if (count_mode) {

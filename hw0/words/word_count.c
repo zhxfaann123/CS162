@@ -56,11 +56,10 @@ void add_word(WordCount **wclist, char *word) {
   WordCount *wchead = *wclist;
   WordCount *wc = find_word(wchead, word);
   if (wc == NULL) {
-    WordCount *newCW = {
-      word,
-      1,
-      wchead
-    };
+    WordCount *newCW = (WordCount*) malloc(sizeof(WordCount));
+    newCW->word = new_string(word);
+    newCW->count = 1;
+    newCW->next = wchead;
     *wclist = newCW;
   } else {
     wc->count++;

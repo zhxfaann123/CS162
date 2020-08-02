@@ -1,3 +1,3 @@
-/Users/zhaoxiaofeng/Course material/CS162/repo/student0/hw0/words/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/Users/zhaoxiaofeng/Course material/CS162/repo/student0/hw0/words/cmake-build-debug/CMakeFiles/edit_cache.dir
-/Users/zhaoxiaofeng/Course material/CS162/repo/student0/hw0/words/cmake-build-debug/CMakeFiles/words.dir
+/home/xiaofeng/CLionProjects/CS162/hw0/words/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/xiaofeng/CLionProjects/CS162/hw0/words/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/xiaofeng/CLionProjects/CS162/hw0/words/cmake-build-debug/CMakeFiles/words.dir
