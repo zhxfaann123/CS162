@@ -6,11 +6,11 @@
 
 #IncludeRegexTransform: 
 
-/Users/zhaoxiaofeng/Course material/CS162/repo/student0/hw0/words/word_count.c
+/home/xiaofeng/CLionProjects/CS162/hw0/words/word_count.c
 word_count.h
-/Users/zhaoxiaofeng/Course material/CS162/repo/student0/hw0/words/word_count.h
+/home/xiaofeng/CLionProjects/CS162/hw0/words/word_count.h
 
-/Users/zhaoxiaofeng/Course material/CS162/repo/student0/hw0/words/word_count.h
+/home/xiaofeng/CLionProjects/CS162/hw0/words/word_count.h
 ctype.h
 -
 stdbool.h
