@@ -32,28 +32,74 @@
 
 void init_words(word_count_list_t *wclist) {
   /* TODO */
+  list_init(&(wclist->lst));
 }
 
 size_t len_words(word_count_list_t *wclist) {
   /* TODO */
-  return 0;
+    return list_size(&(wclist->lst));
 }
 
 word_count_t *find_word(word_count_list_t *wclist, char *word) {
   /* TODO */
+  struct list *word_list = &(wclist->lst);
+  struct list_elem *cur;
+  for (cur = list_begin(word_list); cur != list_end(word_list); cur = list_next(cur)) {
+      word_count_t *my_wc = list_entry(cur, word_count_t, elem);
+      if (strcmp(my_wc->word, word) == 0) {
+          return my_wc;
+      }
+  }
   return NULL;
 }
 
 word_count_t *add_word(word_count_list_t *wclist, char *word) {
   /* TODO */
-  return NULL;
+    struct list *word_list = &(wclist->lst);
+    struct list_elem *cur;
+    for (cur = list_begin(word_list); cur != list_end(word_list); cur = list_next(cur)) {
+        word_count_t *my_wc = list_entry(cur, word_count_t, elem);
+        if (strcmp(my_wc->word, word) == 0) {
+            // Lock the wclist during modification, unlock it afterwards.
+            pthread_mutex_lock(&wclist->lock);
+            my_wc->count++;
+            pthread_mutex_unlock(&wclist->lock);
+            // =========== UNLOCKED ===========
+            return my_wc;
+        }
+    }
+
+    char* word_cpy = (char*) malloc(sizeof(char) * (strlen(word) + 1));
+    strcpy(word_cpy, word);
+    word_count_t *new_wc = (word_count_t*)malloc(sizeof(word_count_t));
+    new_wc->word = word_cpy;
+    new_wc->count = 1;
+    // Lock the wclist while inserting a new node.
+    pthread_mutex_lock(&wclist->lock);
+    list_push_back(&wclist->lst, &new_wc->elem);
+    pthread_mutex_unlock(&wclist->lock);
+    // Finish inserting,
+    return new_wc;
+
+
 }
 
 void fprint_words(word_count_list_t *wclist, FILE *outfile) {
   /* TODO */
+    struct list_elem *cur;
+    char* buffer;
+    struct list *list_member = &wclist->lst;
+    for (cur = list_begin(list_member); cur != list_end(list_member); cur = list_next(cur)) {
+        word_count_t *word_elem = list_entry(cur, struct word_count, elem);
+        buffer = (char*) malloc(sizeof(char) * (strlen(word_elem->word) + 10));
+        sprintf(buffer, "%s %d\n", word_elem->word, word_elem->count);
+        fputs(buffer, outfile);
+        free(word_elem->word);
+    }
 }
 
 void wordcount_sort(word_count_list_t *wclist,
                     bool less(const word_count_t *, const word_count_t *)) {
   /* TODO */
+  list_sort(&wclist->lst, );
 }
