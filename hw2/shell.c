@@ -90,21 +90,28 @@ int cmd_cd(struct tokens *tokens) {
 
 /* To execute a programme in the shell. */
 int cmd_exec_prog(struct tokens *tokens) {
+
   int num_para = tokens_get_length(tokens) - 1;
   char *dir_prog = tokens_get_token(tokens, 0);
   // printf("%s\n", dir_prog);
-  char *argv[num_para];
+  // "+1" targets the last NULL pointer required by "execv".
+  char *argv[num_para + 1];
   int status;
 
   // Allocate the memory for the input arguments.
   for (int i = 0; i < num_para; i++) {
-    argv[i] = (char*) malloc(sizeof(char) * (num_para+1));
-    strcpy(argv[i], tokens_get_token(tokens, i + 1));
+    char* para = tokens_get_token(tokens, i + 1);
+    int len_para = strlen(para);
+    argv[i] = (char*) malloc(sizeof(char) * (len_para + 1));
+    strcpy(argv[i], para);
   }
   argv[num_para] = NULL;
 
-  if (fork() == 0) {
-    execv(dir_prog, argv);
+    pid_t cpid = fork();
+  if (cpid == 0) {
+    int i = execv(dir_prog, argv);
+    printf("%d\n", i);
+    exit(0);
   } else {
     wait(&status);
   }
