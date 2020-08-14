@@ -28,31 +28,69 @@
 
 void init_words(word_count_list_t *wclist) {
   /* TODO */
+  list_init(wclist);
 }
 
 size_t len_words(word_count_list_t *wclist) {
   /* TODO */
-  return 0;
+    return list_size(wclist);
 }
 
 word_count_t *find_word(word_count_list_t *wclist, char *word) {
   /* TODO */
+  struct list_elem *cur;
+  for (cur = list_begin(wclist); cur != list_end(wclist); cur = list_next(cur)) {
+      word_count_t *_word_count_t = list_entry(cur, word_count_t, elem);
+      if (strcmp(word, _word_count_t->word) == 0) {
+          return _word_count_t;
+      }
+  }
   return NULL;
 }
 
 word_count_t *add_word(word_count_list_t *wclist, char *word) {
   /* TODO */
-  return NULL;
+  struct list_elem *cur;
+  for (cur = list_begin(wclist); cur != list_end(wclist); cur = list_next(cur)) {
+      word_count_t *_word_count_t = list_entry(cur, word_count_t, elem);
+      if (strcmp(word, _word_count_t->word) == 0) {
+          _word_count_t->count += 1;
+          return _word_count_t;
+      }
+  }
+  // Initialize a word_count_t object and attach the list_elem to the List --Xiaofeng
+
+  char* word_cpy = (char*) malloc(sizeof(char) * (strlen(word) + 1));
+  strcpy(word_cpy, word);
+  word_count_t *_word_count_t = (word_count_t*)malloc(sizeof(word_count_t));
+  _word_count_t->word = word_cpy;
+  _word_count_t->count = 1;
+  list_push_back(wclist, &_word_count_t->elem);
+  return _word_count_t;
 }
 
 void fprint_words(word_count_list_t *wclist, FILE *outfile) {
   /* TODO */
+  struct list_elem *cur;
+  char* buffer;
+  for (cur = list_begin(wclist); cur != list_end(wclist); cur = list_next(cur)) {
+      word_count_t *word_elem = list_entry(cur, struct word_count, elem);
+      buffer = (char*) malloc(sizeof(char) * (strlen(word_elem->word) + 10));
+      sprintf(buffer, "%s %d\n", word_elem->word, word_elem->count);
+      fputs(buffer, outfile);
+      free(word_elem->word);
+  }
+
+
 }
 
 static bool less_list(const struct list_elem *ewc1,
                       const struct list_elem *ewc2, void *aux) {
   /* TODO */
-  return false;
+  bool (*func_ptr)(word_count_t *, word_count_t *) = aux;
+  word_count_t *wc_1 = list_entry(ewc1, word_count_t, elem);
+  word_count_t *wc_2 = list_entry(ewc2, word_count_t, elem);
+  return (*func_ptr)(wc_1, wc_2);
 }
 
 void wordcount_sort(word_count_list_t *wclist,

@@ -45,6 +45,9 @@ int main(int argc, char *argv[]) {
     count_words(&word_counts, stdin);
   } else {
     /* TODO */
+    int nthreads = argc - 1;
+    pthread_t threads[nthreads];
+
   }
 
   /* Output final result of all threads' work. */
