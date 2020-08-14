@@ -95,6 +95,7 @@ int cmd_exec_prog(struct tokens *tokens) {
   char *dir_prog = tokens_get_token(tokens, 0);
   // printf("%s\n", dir_prog);
   char *argv[num_para];
+  int status;
 
   // Allocate the memory for the input arguments.
   for (int i = 0; i < num_para; i++) {
@@ -102,7 +103,11 @@ int cmd_exec_prog(struct tokens *tokens) {
     strcpy(argv[i], tokens_get_token(tokens, i + 1));
   }
 
-  execv(dir_prog, argv);
+  if (fork() == 0) {
+    execv(dir_prog, argv);
+  } else {
+    wait(&status);
+  }
 
   // Free the allocated memory.
   for (int i = 0; i < num_para; i++) {
