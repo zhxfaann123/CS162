@@ -90,12 +90,11 @@ int cmd_cd(struct tokens *tokens) {
 
 /* To execute a programme in the shell. */
 int cmd_exec_prog(struct tokens *tokens) {
-  int MAX_NUMBER_INPUT = 100;
   int MAX_PARAMETER_LEN = 100;
   int num_para = tokens_get_length(tokens) - 1;
   char *dir_prog = tokens_get_token(tokens, 0);
-  printf("%s\n", dir_prog);
-  char *argv[MAX_NUMBER_INPUT];
+  // printf("%s\n", dir_prog);
+  char *argv[num_para];
 
   // Allocate the memory for the input arguments.
   for (int i = 0; i < num_para; i++) {
@@ -103,18 +102,13 @@ int cmd_exec_prog(struct tokens *tokens) {
     strcpy(argv[i], tokens_get_token(tokens, i + 1));
   }
 
-  if (num_para > MAX_NUMBER_INPUT) {
-    printf("The number of parameters should be no more than 100.\n");
-    return -1;
-  } else {
-    execv(dir_prog, argv);
+  execv(dir_prog, argv);
 
-    // Free the allocated memory.
-    for (int i = 0; i < num_para; i++) {
+  // Free the allocated memory.
+  for (int i = 0; i < num_para; i++) {
       free(argv[i]);
-    }
-    return 1;
   }
+  return 1;
 }
 
 /* Looks up the built-in command, if it exists. */
@@ -172,8 +166,9 @@ int main(unused int argc, unused char *argv[]) {
       cmd_table[fundex].fun(tokens);
     } else {
       /* REPLACE this to run commands as programs. */
-      cmd_exec_prog(tokens);
-      fprintf(stdout, "This shell doesn't know how to run programs.\n");
+      if (cmd_exec_prog(tokens) == -1) {
+          fprintf(stdout, "This shell doesn't know how to run programs.\n");
+      }
     }
 
     if (shell_is_interactive)
