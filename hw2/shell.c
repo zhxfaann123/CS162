@@ -30,6 +30,8 @@ pid_t shell_pgid;
 
 int cmd_exit(struct tokens *tokens);
 int cmd_help(struct tokens *tokens);
+int cmd_pwd(struct tokens *tokens);
+int cmd_cd(struct tokens *tokens);
 
 /* Built-in command functions take token array (see parse.h) and return int */
 typedef int cmd_fun_t(struct tokens *tokens);
@@ -44,6 +46,8 @@ typedef struct fun_desc {
 fun_desc_t cmd_table[] = {
   {cmd_help, "?", "show this help menu"},
   {cmd_exit, "exit", "exit the command shell"},
+  {cmd_pwd, "pwd", "print the current working directory."},
+  {cmd_cd, "cd", "change the working directory."}
 };
 
 /* Prints a helpful description for the given command */
@@ -57,6 +61,60 @@ int cmd_help(unused struct tokens *tokens) {
 int cmd_exit(struct tokens *tokens) {
   tokens_destroy(tokens);
   exit(0);
+}
+
+/* Print the current working directory. */
+int cmd_pwd(struct tokens *tokens) {
+    int MaxDirectoryLength = 100;
+    char *pwd = (char*) malloc(MaxDirectoryLength * sizeof(char));
+    getcwd(pwd, MaxDirectoryLength);
+    printf("%s\n", pwd);
+    free(pwd);
+    return 1;
+}
+
+/* Change the working directory. */
+int cmd_cd(struct tokens *tokens) {
+    if (tokens_get_length(tokens) != 2) {
+        printf("Incorrect number of parameters\n");
+        return -1;
+    } else {
+        char *directoryToGo = tokens_get_token(tokens, 1);
+        if (chdir(directoryToGo) == -1) {
+          printf("Illegal directory.\n");
+          return -1;
+        }
+        return 1;
+    }
+}
+
+/* To execute a programme in the shell. */
+int cmd_exec_prog(struct tokens *tokens) {
+  int MAX_NUMBER_INPUT = 100;
+  int MAX_PARAMETER_LEN = 100;
+  int num_para = tokens_get_length(tokens) - 1;
+  char *dir_prog = tokens_get_token(tokens, 0);
+  printf("%s\n", dir_prog);
+  char *argv[MAX_NUMBER_INPUT];
+
+  // Allocate the memory for the input arguments.
+  for (int i = 0; i < num_para; i++) {
+    argv[i] = (char*) malloc(sizeof(char) * MAX_PARAMETER_LEN);
+    strcpy(argv[i], tokens_get_token(tokens, i + 1));
+  }
+
+  if (num_para > MAX_NUMBER_INPUT) {
+    printf("The number of parameters should be no more than 100.\n");
+    return -1;
+  } else {
+    execv(dir_prog, argv);
+
+    // Free the allocated memory.
+    for (int i = 0; i < num_para; i++) {
+      free(argv[i]);
+    }
+    return 1;
+  }
 }
 
 /* Looks up the built-in command, if it exists. */
@@ -114,6 +172,7 @@ int main(unused int argc, unused char *argv[]) {
       cmd_table[fundex].fun(tokens);
     } else {
       /* REPLACE this to run commands as programs. */
+      cmd_exec_prog(tokens);
       fprintf(stdout, "This shell doesn't know how to run programs.\n");
     }
 
@@ -124,6 +183,5 @@ int main(unused int argc, unused char *argv[]) {
     /* Clean up memory */
     tokens_destroy(tokens);
   }
-
   return 0;
 }
