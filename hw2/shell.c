@@ -50,6 +50,47 @@ fun_desc_t cmd_table[] = {
   {cmd_cd, "cd", "change the working directory."}
 };
 
+/* Resolve the abspath by searching the env. of the PATH. */
+char* path_resolution(char *input_addr) {
+  /* Return the input_addr If the target exists in the current working directory.
+     Or search the env. variables for the target. */
+  if (access(input_addr, F_OK)) {
+    return input_addr;
+  } else {
+    const char *PATH = getenv("PATH");
+    int input_len = strlen(input_addr);
+    /* Cut out the individual path of the full PATH and check if such file exists. */
+    int begin = 0;
+    int count = 0;
+    while(PATH[begin + count] != '\0') {
+      if (PATH[begin + count] != ':') {
+        count += 1;
+      } else {
+        char *abs_path = (char*) malloc(sizeof(char) * (input_len + count));
+        strncpy(abs_path, PATH + begin, count + 1);
+        strcat(abs_path, input_addr);
+        /* Check if the file exists under the env. path. */
+        if (access(abs_path, F_OK) != -1) {
+          return abs_path;
+        }
+        /* Modify the idx_index and count for checking the next individual path. */
+        begin = count + 1;
+        count = 0;
+      }
+    }
+    /* Check the 'last' individual path. */
+    char *abs_path = (char*) malloc(sizeof(char) * (input_len + count));
+    strncpy(abs_path, PATH + begin, count + 1);
+    strcat(abs_path, input_addr);
+    /* Check if the file exists under the env. path. */
+    if (access(abs_path, F_OK) != -1) {
+      return abs_path;
+    }
+    /* If the programme proceeds here, No such file exists.*/
+    return NULL;
+  }
+}
+
 /* Prints a helpful description for the given command */
 int cmd_help(unused struct tokens *tokens) {
   for (unsigned int i = 0; i < sizeof(cmd_table) / sizeof(fun_desc_t); i++)
@@ -126,47 +167,6 @@ int cmd_exec_prog(struct tokens *tokens) {
       free(argv[i]);
   }
   return 1;
-}
-
-/* Resolve the abspath by searching the env. of the PATH. */
-char* path_resolution(char *input_addr) {
-  /* Return the input_addr If the target exists in the current working directory.
-     Or search the env. variables for the target. */
-  if (access(input_addr, "F_OK")) {
-    return input_addr;
-  } else {
-    const char *PATH = getenv("PATH");
-    int input_len = strlen(input_addr);
-    /* Cut out the individual path of the full PATH and check if such file exists. */
-    int begin = 0;
-    int count = 0;
-    while(PATH[begin + count] != '\0') {
-      if (PATH[begin + count] != ':') {
-        count += 1;
-      } else {
-        char *abs_path = (char*) malloc(sizeof(char) * (input_addr + count))
-        strncpy(abs_path, PATH + begin, count + 1);
-        strcat(abspath, input_addr);
-        /* Check if the file exists under the env. path. */
-        if (access(abs_path, F_OK) != -1) {
-          return abspath;
-        }
-        /* Modify the idx_index and count for checking the next individual path. */
-        begin = count + 1;
-        count = 0;
-      }
-    }
-    /* Check the 'last' individual path. */
-    char *abs_path = (char*) malloc(sizeof(char) * (input_addr + count))
-    strncpy(abs_path, PATH + begin, count + 1);
-    strcat(abspath, input_addr);
-    /* Check if the file exists under the env. path. */
-    if (access(abs_path, F_OK) != -1) {
-      return abspath;
-    }
-    /* If the programme proceeds here, No such file exists.*/
-    return NULL;
-  }
 }
 
 
