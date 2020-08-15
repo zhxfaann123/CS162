@@ -110,8 +110,12 @@ int cmd_exec_prog(struct tokens *tokens) {
 
     pid_t cpid = fork();
   if (cpid == 0) {
-    int i = execv(dir_prog, argv);
-    printf("%d\n", i);
+    char* resolved_path = path_resolution(dir_prog);
+    if (resolved_path != NULL) {
+      execv(dir_prog, argv);
+    } else {
+      printf("No Such file or directory!.\n");
+    }
     exit(0);
   } else {
     wait(&status);
@@ -123,6 +127,48 @@ int cmd_exec_prog(struct tokens *tokens) {
   }
   return 1;
 }
+
+/* Resolve the abspath by searching the env. of the PATH. */
+char* path_resolution(char *input_addr) {
+  /* Return the input_addr If the target exists in the current working directory.
+     Or search the env. variables for the target. */
+  if (access(input_addr, "F_OK")) {
+    return input_addr;
+  } else {
+    const char *PATH = getenv("PATH");
+    int input_len = strlen(input_addr);
+    /* Cut out the individual path of the full PATH and check if such file exists. */
+    int begin = 0;
+    int count = 0;
+    while(PATH[begin + count] != '\0') {
+      if (PATH[begin + count] != ':') {
+        count += 1;
+      } else {
+        char *abs_path = (char*) malloc(sizeof(char) * (input_addr + count))
+        strncpy(abs_path, PATH + begin, count + 1);
+        strcat(abspath, input_addr);
+        /* Check if the file exists under the env. path. */
+        if (access(abs_path, F_OK) != -1) {
+          return abspath;
+        }
+        /* Modify the idx_index and count for checking the next individual path. */
+        begin = count + 1;
+        count = 0;
+      }
+    }
+    /* Check the 'last' individual path. */
+    char *abs_path = (char*) malloc(sizeof(char) * (input_addr + count))
+    strncpy(abs_path, PATH + begin, count + 1);
+    strcat(abspath, input_addr);
+    /* Check if the file exists under the env. path. */
+    if (access(abs_path, F_OK) != -1) {
+      return abspath;
+    }
+    /* If the programme proceeds here, No such file exists.*/
+    return NULL;
+  }
+}
+
 
 /* Looks up the built-in command, if it exists. */
 int lookup(char cmd[]) {
