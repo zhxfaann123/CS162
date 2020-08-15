@@ -50,6 +50,37 @@ fun_desc_t cmd_table[] = {
   {cmd_cd, "cd", "change the working directory."}
 };
 
+/* 1. Redirect stdin/stdout by checking '> [file]' or '< [file]' symbols.
+   2. Remove the IO redirectory symbols to form the new tokens. */
+struct tokens *io_redirect(struct tokens* tokens) {
+  int len_token = tokens_get_length(tokens);
+  int buffer_len = 64;
+  char* string_buffer = (char*)malloc(sizeof(char) * buffer_len);
+  /* 1st argument would never change. */
+  strcpy(string_buffer, tokens_get_token(tokens, 0));
+  strcat(string_buffer, ' ');
+  for (int i = 1; i < len_token; i++) {
+    char *arg = tokens_get_token(tokens, i);
+    // I/O Redirection
+    if (strcmp(arg, '>') == 0) {
+      char *file = tokens_get_token(tokens, i + 1);
+      freopen(file, "w+", stdout);
+    }
+    if (strcmp(arg, '<') == 0) {
+      char *file = tokens_get_token(tokens, i + 1);
+      freopen(file, "r+", stdin);
+    }
+    // '2' is an abitrary number to reserve space for ' ' and '\0';
+    if (strlen(string_buffer) + strlen(arg) + 2 < buffer_len - 1) {
+      buffer_len *=buffer_len;
+      string_buffer = (char*)realloc(string_buffer, buffer_len);
+    }
+    strcat(string_buffer, arg);
+    strcat(string_buffer, ' ');
+  }
+  return tokenize(string_buffer);
+}
+
 /* Resolve the abspath by searching the env. of the PATH. */
 char* path_resolution(char *input_addr) {
   /* Return the input_addr If the target exists in the current working directory.
