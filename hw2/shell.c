@@ -58,25 +58,29 @@ struct tokens *io_redirect(struct tokens* tokens) {
   char* string_buffer = (char*)malloc(sizeof(char) * buffer_len);
   /* 1st argument would never change. */
   strcpy(string_buffer, tokens_get_token(tokens, 0));
-  strcat(string_buffer, ' ');
+  strcat(string_buffer, " ");
   for (int i = 1; i < len_token; i++) {
     char *arg = tokens_get_token(tokens, i);
     // I/O Redirection
-    if (strcmp(arg, '>') == 0) {
+    if (strcmp(arg, ">") == 0) {
       char *file = tokens_get_token(tokens, i + 1);
       freopen(file, "w+", stdout);
-    }
-    if (strcmp(arg, '<') == 0) {
+      i++;
+      continue;
+    } else if (strcmp(arg, "<") == 0) {
       char *file = tokens_get_token(tokens, i + 1);
       freopen(file, "r+", stdin);
+      i++;
+      continue;
+    } else {
+        // '2' is an abitrary number to reserve space for ' ' and '\0';
+        if (strlen(string_buffer) + strlen(arg) + 2 > buffer_len - 1) {
+            buffer_len *= buffer_len;
+            string_buffer = (char *) realloc(string_buffer, buffer_len);
+        }
+        strcat(string_buffer, arg);
+        strcat(string_buffer, " ");
     }
-    // '2' is an abitrary number to reserve space for ' ' and '\0';
-    if (strlen(string_buffer) + strlen(arg) + 2 < buffer_len - 1) {
-      buffer_len *=buffer_len;
-      string_buffer = (char*)realloc(string_buffer, buffer_len);
-    }
-    strcat(string_buffer, arg);
-    strcat(string_buffer, ' ');
   }
   return tokenize(string_buffer);
 }
@@ -85,7 +89,7 @@ struct tokens *io_redirect(struct tokens* tokens) {
 char* path_resolution(char *input_addr) {
   /* Return the input_addr If the target exists in the current working directory.
      Or search the env. variables for the target. */
-  if (access(input_addr, F_OK)) {
+  if (access(input_addr, F_OK) == 0) {
     return input_addr;
   } else {
     const char *PATH = getenv("PATH");
@@ -97,21 +101,26 @@ char* path_resolution(char *input_addr) {
       if (PATH[begin + count] != ':') {
         count += 1;
       } else {
-        char *abs_path = (char*) malloc(sizeof(char) * (input_len + count));
-        strncpy(abs_path, PATH + begin, count + 1);
+        char *abs_path = (char*) malloc(sizeof(char) * (input_len + count + 2));
+        strncpy(abs_path, PATH + begin, count);
+        /* Tips: strncpy requires to append a '\0' manually in order to terminate the string. */
+        abs_path[count] = '\0';
+        strcat(abs_path, "/");
         strcat(abs_path, input_addr);
         /* Check if the file exists under the env. path. */
         if (access(abs_path, F_OK) != -1) {
           return abs_path;
         }
         /* Modify the idx_index and count for checking the next individual path. */
-        begin = count + 1;
+        begin += count + 1;
         count = 0;
+        free(abs_path);
       }
     }
     /* Check the 'last' individual path. */
-    char *abs_path = (char*) malloc(sizeof(char) * (input_len + count));
-    strncpy(abs_path, PATH + begin, count + 1);
+    char *abs_path = (char*) malloc(sizeof(char) * (input_len + count + 2));
+    strncpy(abs_path, PATH + begin, count);
+    strcat(abs_path, "/");
     strcat(abs_path, input_addr);
     /* Check if the file exists under the env. path. */
     if (access(abs_path, F_OK) != -1) {
@@ -165,12 +174,13 @@ int cmd_exec_prog(struct tokens *tokens) {
 
   int num_para = tokens_get_length(tokens);
   char *dir_prog = tokens_get_token(tokens, 0);
+  char* resolved_path = path_resolution(dir_prog);
   // printf("%s\n", dir_prog);
   // "+1" targets the last NULL pointer required by "execv".
   char *argv[num_para + 1];
   int status;
 
-  argv[0] = dir_prog;
+  argv[0] = resolved_path;
   // Allocate the memory for the input arguments.
   for (int i = 1; i < num_para; i++) {
     char* para = tokens_get_token(tokens, i);
@@ -180,11 +190,11 @@ int cmd_exec_prog(struct tokens *tokens) {
   }
   argv[num_para] = NULL;
 
-    pid_t cpid = fork();
+
+  pid_t cpid = fork();
   if (cpid == 0) {
-    char* resolved_path = path_resolution(dir_prog);
     if (resolved_path != NULL) {
-      execv(dir_prog, argv);
+      execv(resolved_path, argv);
     } else {
       printf("No Such file or directory!.\n");
     }
@@ -248,7 +258,7 @@ int main(unused int argc, unused char *argv[]) {
   while (fgets(line, 4096, stdin)) {
     /* Split our line into words. */
     struct tokens *tokens = tokenize(line);
-
+    tokens = io_redirect(tokens);
     /* Find which built-in function to run. */
     int fundex = lookup(tokens_get_token(tokens, 0));
 
