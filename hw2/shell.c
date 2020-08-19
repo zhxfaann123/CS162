@@ -13,6 +13,7 @@
 
 #include "tokenizer.h"
 
+
 /* Convenience macro to silence compiler warnings about unused function parameters. */
 #define unused __attribute__((unused))
 
@@ -50,8 +51,9 @@ fun_desc_t cmd_table[] = {
         {cmd_cd, "cd", "change the working directory."}
 };
 
+
 /* Return the index of the first "|" encountered. */
-int pipeline(struct tokens *tokens) {
+int get_idx_split(struct tokens *tokens) {
     for (int i = 0; i < tokens_get_length(tokens); i++) {
         if (strcmp(tokens_get_token(tokens, i), "|") == 0) {
             return i;
@@ -80,16 +82,16 @@ struct tokens *rest_tokens(struct tokens *tokens, int idx_begin) {
     /* push the element of idx_begin to the buffer. */
     char *first_elem = tokens_get_token(tokens, idx_begin);
     if (strlen(first_elem) + 1 > buffer_len) {
-        str_buffer = string_relloc(str_buffer, &buffer_len, tokens_get_length(first_elem));
+        str_buffer = string_relloc(str_buffer, &buffer_len, strlen(first_elem));
         strcpy(str_buffer, first_elem);
     } else {
         strcpy(str_buffer, first_elem);
     }
-
+    /* Push the rest of the element to the buffer. */
     for (int i = idx_begin + 1; i < tokens_get_length(tokens); i++) {
         char *elem = tokens_get_token(tokens, i);
         if (strlen(str_buffer) + strlen(elem) + 1 > buffer_len) {
-            str_buffer = string_relloc(str_buffer, &buffer_len, tokens_get_length(elem));
+            str_buffer = string_relloc(str_buffer, &buffer_len, strlen(elem));
             strcpy(str_buffer, elem);
         } else {
             strcpy(str_buffer, elem);
@@ -220,47 +222,79 @@ int cmd_cd(struct tokens *tokens) {
     }
 }
 
-/* To execute a programme in the shell. */
+/* To execute a programme in the shell.
+ * 讲道理这个函数太长了。*/
 int cmd_exec_prog(struct tokens *tokens) {
+    int idx_split = get_idx_split(tokens);
+    int fd[2];
+    /* If there is no process ensued. */
+    if (idx_split == -1) {
+        int num_para = tokens_get_length(tokens);
+        char *dir_prog = tokens_get_token(tokens, 0);
+        char *resolved_path = path_resolution(dir_prog);
+        // "+1" targets the last NULL pointer required by "execv".
+        char *argv[num_para + 1];
+        int status;
 
-    
-    int num_para = tokens_get_length(tokens);
-    char *dir_prog = tokens_get_token(tokens, 0);
-    char* resolved_path = path_resolution(dir_prog);
-    // printf("%s\n", dir_prog);
-    // "+1" targets the last NULL pointer required by "execv".
-    char *argv[num_para + 1];
-    int status;
-
-    argv[0] = resolved_path;
-    // Allocate the memory for the input arguments.
-    for (int i = 1; i < num_para; i++) {
-        char* para = tokens_get_token(tokens, i);
-        int len_para = strlen(para);
-        argv[i] = (char*) malloc(sizeof(char) * (len_para + 1));
-        strcpy(argv[i], para);
-    }
-    argv[num_para] = NULL;
-
-
-    pid_t cpid = fork();
-    if (cpid == 0) {
-        if (resolved_path != NULL) {
-
-            execv(resolved_path, argv);
-        } else {
-            printf("No Such file or directory!.\n");
+        argv[0] = resolved_path;
+        // Allocate the memory for the input arguments.
+        for (int i = 1; i < num_para; i++) {
+            char *para = tokens_get_token(tokens, i);
+            int len_para = strlen(para);
+            argv[i] = (char *) malloc(sizeof(char) * (len_para + 1));
+            strcpy(argv[i], para);
         }
-        exit(0);
+        argv[num_para] = NULL;
+
+        pid_t cpid = fork();
+        if (cpid == 0) {
+            if (resolved_path != NULL) {
+                execv(resolved_path, argv);
+            } else {
+                printf("No Such file or directory!.\n");
+            }
+            exit(0);
+        } else {
+            wait(&status);
+        }
+
+        // Free the allocated memory.
+        for (int i = 1; i < num_para; i++) {
+            free(argv[i]);
+        }
+        return 1;
     } else {
-        wait(&status);
+        int num_para = idx_split;
+        char *dir_prog = tokens_get_token(tokens, 0);
+        char *resolved_path = path_resolution(dir_prog);
+        char *argv[num_para + 1];
+        int status;
+
+        argv[0] = resolved_path;
+        for (int i = 1; i < num_para; i++) {
+            char *para = tokens_get_token(tokens, i);
+            int len_para = strlen(para);
+            argv[i] = (char *) malloc(sizeof(char) * (len_para + 1));
+            strcpy(argv[i], para);
+        }
+        argv[num_para] = NULL;
+
+        pid_t cpid = fork();
+        if (cpid == 0) {
+            if (resolved_path != NULL) {
+                execv(resolved_path, argv);
+            } else {
+                printf("No Such file or directory!.\n");
+            }
+            exit(0);
+        } else {
+            wait(&status);
+            /* Get the rest of the command and execute it. */
+            struct tokens *rest_token = rest_tokens(tokens, idx_split + 1);
+            cmd_exec_prog(rest_token);
+        }
     }
 
-    // Free the allocated memory.
-    for (int i = 1; i < num_para; i++) {
-        free(argv[i]);
-    }
-    return 1;
 }
 
 
