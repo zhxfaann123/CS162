@@ -12,7 +12,17 @@
 #include <unistd.h>
 
 #include "tokenizer.h"
+#include "Utils.h"
 
+int cmd_exec_prog(struct tokens *tokens, bool is_begin);
+void exec_mode_1(struct tokens *tokens);
+void exec_mode_2(struct tokens *tokens, int idx_split);
+void exec_mode_3(struct tokens *tokens, int idx_split);
+void exec_mode_4(struct tokens *tokens);
+
+int input_fd[2];
+int output_fd[2];
+char* message;
 
 /* Convenience macro to silence compiler warnings about unused function parameters. */
 #define unused __attribute__((unused))
@@ -52,85 +62,6 @@ fun_desc_t cmd_table[] = {
 };
 
 
-/* Return the index of the first "|" encountered. */
-int get_idx_split(struct tokens *tokens) {
-    for (int i = 0; i < tokens_get_length(tokens); i++) {
-        if (strcmp(tokens_get_token(tokens, i), "|") == 0) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-/* Reallocate the memory space for string. */
-char *string_relloc(char *string, int *buffer_len, int append_len) {
-    while (true) {
-        if (*buffer_len > strlen(string) + append_len + 1) {
-            return string;
-        } else {
-            *buffer_len *= 2;
-            string = realloc(string, *buffer_len);
-            return string;
-        }
-    }
-}
-
-/* Extract the first a few of the tokens.[0, idx_end]*/
-struct tokens *head_tokens(struct tokens *tokens, int idx_end) {
-    int buffer_len = 128;
-    char *str_buffer = (char*)malloc(sizeof(char) * buffer_len);
-    /* push the element of idx_begin to the buffer. */
-    char *first_elem = tokens_get_token(tokens, 0);
-    if (strlen(first_elem) + 1 > buffer_len) {
-        str_buffer = string_relloc(str_buffer, &buffer_len, strlen(first_elem));
-        strcpy(str_buffer, first_elem);
-    } else {
-        strcpy(str_buffer, first_elem);
-    }
-    /* Push the rest of the element to the buffer. */
-    for (int i = 1; i <= idx_end; i++) {
-        char *elem = tokens_get_token(tokens, i);
-        if (strlen(str_buffer) + strlen(elem) + 1 > buffer_len) {
-            str_buffer = string_relloc(str_buffer, &buffer_len, strlen(elem));
-            strcpy(str_buffer, elem);
-        } else {
-            strcpy(str_buffer, elem);
-        }
-    }
-
-    struct tokens *tokens1 = tokenize(str_buffer);
-    free(str_buffer);
-    return tokens1;
-}
-
-/* Extract the rest of the tokens.*/
-struct tokens *rest_tokens(struct tokens *tokens, int idx_begin) {
-    int buffer_len = 128;
-    char *str_buffer = (char*)malloc(sizeof(char) * buffer_len);
-    /* push the element of idx_begin to the buffer. */
-    char *first_elem = tokens_get_token(tokens, idx_begin);
-    if (strlen(first_elem) + 1 > buffer_len) {
-        str_buffer = string_relloc(str_buffer, &buffer_len, strlen(first_elem));
-        strcpy(str_buffer, first_elem);
-    } else {
-        strcpy(str_buffer, first_elem);
-    }
-    /* Push the rest of the element to the buffer. */
-    for (int i = idx_begin + 1; i < tokens_get_length(tokens); i++) {
-        char *elem = tokens_get_token(tokens, i);
-        if (strlen(str_buffer) + strlen(elem) + 1 > buffer_len) {
-            str_buffer = string_relloc(str_buffer, &buffer_len, strlen(elem));
-            strcpy(str_buffer, elem);
-        } else {
-            strcpy(str_buffer, elem);
-        }
-    }
-
-    struct tokens *tokens1 = tokenize(str_buffer);
-    free(str_buffer);
-    return tokens1;
-}
-
 /* 1. Redirect stdin/stdout by checking '> [file]' or '< [file]' symbols.
    2. Remove the IO redirection symbols to form the new tokens. */
 struct tokens *io_redirect(struct tokens* tokens) {
@@ -166,50 +97,27 @@ struct tokens *io_redirect(struct tokens* tokens) {
     return tokenize(string_buffer);
 }
 
-/* Resolve the abspath by searching the env. of the PATH. */
-char* path_resolution(char *input_addr) {
-    /* Return the input_addr If the target exists in the current working directory.
-       Or search the env. variables for the target. */
-    if (access(input_addr, F_OK) == 0) {
-        return input_addr;
-    } else {
-        const char *PATH = getenv("PATH");
-        int input_len = strlen(input_addr);
-        /* Cut out the individual path of the full PATH and check if such file exists. */
-        int begin = 0;
-        int count = 0;
-        while(PATH[begin + count] != '\0') {
-            if (PATH[begin + count] != ':') {
-                count += 1;
-            } else {
-                char *abs_path = (char*) malloc(sizeof(char) * (input_len + count + 2));
-                strncpy(abs_path, PATH + begin, count);
-                /* Tips: strncpy requires to append a '\0' manually in order to terminate the string. */
-                abs_path[count] = '\0';
-                strcat(abs_path, "/");
-                strcat(abs_path, input_addr);
-                /* Check if the file exists under the env. path. */
-                if (access(abs_path, F_OK) != -1) {
-                    return abs_path;
-                }
-                /* Modify the idx_index and count for checking the next individual path. */
-                begin += count + 1;
-                count = 0;
-                free(abs_path);
-            }
-        }
-        /* Check the 'last' individual path. */
-        char *abs_path = (char*) malloc(sizeof(char) * (input_len + count + 2));
-        strncpy(abs_path, PATH + begin, count);
-        strcat(abs_path, "/");
-        strcat(abs_path, input_addr);
-        /* Check if the file exists under the env. path. */
-        if (access(abs_path, F_OK) != -1) {
-            return abs_path;
-        }
-        /* If the programme proceeds here, No such file exists.*/
-        return NULL;
+/* Redirect input only. (Destructive to tokens) */
+void stdin_redirect(struct tokens* tokens) {
+    int idx_stdin = get_idx_stdin(tokens);
+    if (idx_stdin != -1) {
+        tokens_delete_token(tokens, idx_stdin);
+        tokens_delete_token(tokens, idx_stdin + 1);
     }
+
+    char *filename = tokens_get_token(tokens, idx_stdin + 1);
+    freopen(filename, "r+", stdin);
+}
+
+/* Redirect output only. (Destructive to tokens) */
+void stdout_redirect(struct tokens* tokens) {
+    int idx_stdout = get_idx_stdout(tokens);
+    if (idx_stdout == -1) {
+        tokens_delete_token(tokens, idx_stdout);
+        tokens_delete_token(tokens, idx_stdout + 1);
+    }
+    char *filename = tokens_get_token(tokens, idx_stdout + 1);
+    freopen(filename, "w+", stdout);
 }
 
 /* Prints a helpful description for the given command */
@@ -251,7 +159,8 @@ int cmd_cd(struct tokens *tokens) {
 }
 
 /* execute with no pipeline process ensued. */
-void exec_no_pipeline(struct tokens *tokens) {
+void exec_mode_1(struct tokens *tokens) {
+    io_redirect(tokens);
     int num_para = tokens_get_length(tokens);
     char *dir_prog = tokens_get_token(tokens, 0);
     char *resolved_path = path_resolution(dir_prog);
@@ -271,7 +180,6 @@ void exec_no_pipeline(struct tokens *tokens) {
 
     pid_t cpid = fork();
     if (cpid == 0) {
-        io_redirect(tokens);
         if (resolved_path != NULL) {
             execv(resolved_path, argv);
         } else {
@@ -288,61 +196,113 @@ void exec_no_pipeline(struct tokens *tokens) {
     }
 }
 
-void head_process_stdin_redirection();
+/* beginning of the pipeline. */
+void exec_mode_2(struct tokens *tokens, int idx_split) {
+    struct tokens *exec_tokens = tokens_from_start(tokens, idx_split - 1);
+    struct tokens *rest_tokens = tokens_from_end(tokens, idx_split + 1);
+    tokens_destroy(tokens);
 
-/* To execute a programme in the shell.
- * is_begin identifies if the process is the beginning of the pipeline. If it is, the stdin should be redirected.
- * otherwise, no stdin/stdout redirection with outer file is needed.。*/
-int cmd_exec_prog(struct tokens *tokens, bool is_begin) {
-    int idx_split = get_idx_split(tokens);
-    int fd[2];
-    /* If there is no process ensued. */
-    if (idx_split == -1) {
-        exec_no_pipeline(tokens);
-    } else {
-        struct tokens *head_token = head_tokens(tokens, idx_split - 1);
-        struct tokens *rest_token = rest_tokens(tokens, idx_split + 1);
+    stdin_redirect(exec_tokens);
 
-        int num_para = idx_split;
-        char *dir_prog = tokens_get_token(tokens, 0);
-        char *resolved_path = path_resolution(dir_prog);
-        char *argv[num_para + 1];
-        int status;
+    char *dir_prog = tokens_get_token(exec_tokens, 0);
+    char *resolved_path = path_resolution(dir_prog);
+    char ***ptr_argv = tokens_to_argv(exec_tokens);
+    char **argv = *ptr_argv;
 
-        if (is_begin) {
-            
-        }
+    int status;
 
-        argv[0] = resolved_path;
-        for (int i = 1; i < num_para; i++) {
-            char *para = tokens_get_token(tokens, i);
-            int len_para = strlen(para);
-            argv[i] = (char *) malloc(sizeof(char) * (len_para + 1));
-            strcpy(argv[i], para);
-        }
-        argv[num_para] = NULL;
-
-        pid_t cpid = fork();
-        if (cpid == 0) {
-            if (resolved_path != NULL) {
-                if (is_begin) {
-                    execv(resolved_path, argv);
-                } else {
-                    execv(resolved_path, argv);
-                }
-            } else {
-                printf("No Such file or directory!.\n");
-            }
-            exit(0);
+    pid_t cpid = fork();
+    if (cpid == 0) {
+        if (resolved_path != NULL) {
+            execv(resolved_path, argv);
         } else {
-            wait(&status);
-            /* Get the rest of the command and execute it. */
-            cmd_exec_prog(rest_token, false);
+            printf("No Such file or directory!.\n");
         }
+        exit(0);
+    } else {
+        wait(&status);
+        /* Get the rest of the command and execute it. */
+        cmd_exec_prog(rest_tokens, false);
     }
-    return 1;
 }
 
+void exec_mode_3(struct tokens *tokens, int idx_split) {
+    struct tokens *exec_tokens = tokens_from_start(tokens, idx_split - 1);
+    struct tokens *rest_tokens = tokens_from_end(tokens, idx_split + 1);
+    tokens_destroy(tokens);
+
+    char *dir_prog = tokens_get_token(exec_tokens, 0);
+    char *resolved_path = path_resolution(dir_prog);
+    char ***ptr_argv = tokens_to_argv(exec_tokens);
+    char **argv = *ptr_argv;
+
+    int status;
+
+    pid_t cpid = fork();
+    if (cpid == 0) {
+        if (resolved_path != NULL) {
+            execv(resolved_path, argv);
+        } else {
+            printf("No Such file or directory!.\n");
+        }
+        exit(0);
+    } else {
+        wait(&status);
+        /* Get the rest of the command and execute it. */
+        cmd_exec_prog(rest_tokens, false);
+    }
+}
+
+void exec_mode_4(struct tokens *tokens) {
+
+    stdout_redirect(tokens);
+
+    char *dir_prog = tokens_get_token(tokens, 0);
+    char *resolved_path = path_resolution(dir_prog);
+    char ***ptr_argv = tokens_to_argv(tokens);
+    char **argv = *ptr_argv;
+
+    int status;
+
+    pid_t cpid = fork();
+    if (cpid == 0) {
+        if (resolved_path != NULL) {
+            execv(resolved_path, argv);
+        } else {
+            printf("No Such file or directory!.\n");
+        }
+        exit(0);
+    } else {
+        wait(&status);
+    }
+}
+
+/* To execute a programme in the shell.
+ * is_begin identifies if the process is the beginning of the pipeline.
+ * idx_split is the least index of '|'.
+ * 4 Modes are included, they are:
+ *     1. No pipeline mode: is_begin == true, idx_split == -1;
+ *     2. Begin of pipeline: is_begin == true, idx_split != -1;
+ *     3. midst of pipeline: is_begin == false, idx_split != -1;
+ *     4. end of pipeline: is_begin == false, idx_split == -1; */
+int cmd_exec_prog(struct tokens *tokens, bool is_begin) {
+    int idx_split = get_idx_split(tokens);
+    int mode = select_mode(is_begin, idx_split);
+
+    if (mode == 1) {
+        exec_mode_1(tokens);
+        return 1;
+    } else if (mode == 2) {
+        exec_mode_2(tokens, idx_split);
+    } else if (mode == 3) {
+        exec_mode_3(tokens, idx_split);
+    } else {
+        exec_mode_4(tokens);
+        return 1;
+    }
+    // though may not come to this point, it doesn't hurt to add a return statement here.
+    return -1;
+}
 
 /* Looks up the built-in command, if it exists. */
 int lookup(char cmd[]) {
@@ -352,7 +312,7 @@ int lookup(char cmd[]) {
     return -1;
 }
 
-/* Intialization procedures for this shell */
+/* Initialization procedures for this shell */
 void init_shell() {
     /* Our shell is connected to standard input. */
     shell_terminal = STDIN_FILENO;
