@@ -3,8 +3,7 @@
 
 
 /* The following is specifically designed to tackle several nasty
- * string operations associated with the tokens structure.
- * @author Xiaofeng Zhao. */
+ * string operations associated with the tokens structure. */
 
 /* Reallocate the memory space for string. */
 char *string_relloc(char *string, int *buffer_len, int append_len);

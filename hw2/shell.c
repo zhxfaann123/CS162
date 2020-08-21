@@ -228,6 +228,8 @@ void exec_mode_2(struct tokens *tokens, int idx_split) {
         wait(&status);
         close(output_fd[1]);
         read(output_fd[0], message, MAX_MESSAGE_LEN);
+        // Free the allocated memory.
+        free_argv(ptr_argv);
         /* Get the rest of the command and execute it. */
         cmd_exec_prog(rest_tokens, false);
     }
@@ -269,6 +271,7 @@ void exec_mode_3(struct tokens *tokens, int idx_split) {
         write(input_fd[1], message, strlen(message)); // step 3
         wait(&status);
         read(output_fd[0], message, MAX_MESSAGE_LEN);     // step 5
+        free_argv(ptr_argv);
         /* Get the rest of the command and execute it. */
         cmd_exec_prog(rest_tokens, false);
     }
@@ -300,6 +303,7 @@ void exec_mode_4(struct tokens *tokens) {
         exit(0);
     } else {
         wait(&status);
+        free_argv(ptr_argv);
     }
 }
 
