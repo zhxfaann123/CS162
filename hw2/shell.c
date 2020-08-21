@@ -162,39 +162,33 @@ int cmd_cd(struct tokens *tokens) {
 
 /* execute with no pipeline process ensued. */
 void exec_mode_1(struct tokens *tokens) {
-    io_redirect(tokens);
-    int num_para = tokens_get_length(tokens);
-    char *dir_prog = tokens_get_token(tokens, 0);
-    char *resolved_path = path_resolution(dir_prog);
+    // io_redirect(tokens);
+    // int num_para = tokens_get_length(tokens);
+    // char *dir_prog = tokens_get_token(tokens, 0);
+    // char *resolved_path = path_resolution(dir_prog);
     // "+1" targets the last NULL pointer required by "execv".
-    char *argv[num_para + 1];
-    int status;
+    // char *argv[num_para + 1];
 
-    argv[0] = resolved_path;
-    // Allocate the memory for the input arguments.
-    for (int i = 1; i < num_para; i++) {
-        char *para = tokens_get_token(tokens, i);
-        int len_para = strlen(para);
-        argv[i] = (char *) malloc(sizeof(char) * (len_para + 1));
-        strcpy(argv[i], para);
-    }
-    argv[num_para] = NULL;
+    int status;
 
     pid_t cpid = fork();
     if (cpid == 0) {
-        if (resolved_path != NULL) {
-            execv(resolved_path, argv);
-        } else {
-            printf("No Such file or directory!.\n");
-        }
+        //struct tokens *exec_tokens = io_redirect(tokens);
+        struct tokens *exec_tokens = tokens;
+        char ***ptr_argv = tokens_to_argv(exec_tokens);
+        char **argv = *ptr_argv;
+        char *resolved_path = *argv;
+
+        int code = execv(resolved_path, argv);
+        printf("%d", code);
+        // free the allocated memory.
+        tokens_destroy(exec_tokens);
+        tokens_destroy(tokens);
+        free_argv(ptr_argv);
+
         exit(0);
     } else {
         wait(&status);
-    }
-
-    // Free the allocated memory.
-    for (int i = 1; i < num_para; i++) {
-        free(argv[i]);
     }
 }
 
@@ -204,32 +198,30 @@ void exec_mode_2(struct tokens *tokens, int idx_split) {
     struct tokens *rest_tokens = tokens_from_end(tokens, idx_split + 1);
     tokens_destroy(tokens);
 
-    stdin_redirect(exec_tokens);
-
-    // char *dir_prog = tokens_get_token(exec_tokens, 0);
-    // char *resolved_path = path_resolution(dir_prog);
-    char ***ptr_argv = tokens_to_argv(exec_tokens);
-    char **argv = *ptr_argv;
-    char *resolved_path = *argv;
-
     int status;
 
     pid_t cpid = fork();
     if (cpid == 0) {
-        if (resolved_path != NULL) {
-            close(output_fd[0]);
-            dup2(output_fd[1], 1);
-            execv(resolved_path, argv);
-        } else {
-            printf("No Such file or directory!.\n");
-        }
+        stdin_redirect(exec_tokens);
+        char ***ptr_argv = tokens_to_argv(exec_tokens);
+        char **argv = *ptr_argv;
+        char *resolved_path = *argv;
+
+        close(output_fd[0]);
+        dup2(output_fd[1], STDOUT_FILENO);
+        execv(resolved_path, argv);
+
+        // free the allocated memory.
+        tokens_destroy(exec_tokens);
+        tokens_destroy(tokens);
+        free_argv(ptr_argv);
+
         exit(0);
     } else {
         wait(&status);
         close(output_fd[1]);
         read(output_fd[0], message, MAX_MESSAGE_LEN);
-        // Free the allocated memory.
-        free_argv(ptr_argv);
+
         /* Get the rest of the command and execute it. */
         cmd_exec_prog(rest_tokens, false);
     }
@@ -243,9 +235,6 @@ void exec_mode_3(struct tokens *tokens, int idx_split) {
 
     // char *dir_prog = tokens_get_token(exec_tokens, 0);
     // char *resolved_path = path_resolution(dir_prog);
-    char ***ptr_argv = tokens_to_argv(exec_tokens);
-    char **argv = *ptr_argv;
-    char *resolved_path = *argv;
 
     int status;
 
@@ -256,54 +245,52 @@ void exec_mode_3(struct tokens *tokens, int idx_split) {
      * 4. Child execute;
      * 5. Parent read message from fd_stdout[0]. */
     if (cpid == 0) {
-        if (resolved_path != NULL) {
-            close(input_fd[1]);
-            close(output_fd[0]);
+        char ***ptr_argv = tokens_to_argv(exec_tokens);
+        char **argv = *ptr_argv;
+        char *resolved_path = *argv;
 
-            dup2(input_fd[0], STDIN_FILENO);  // step 1
-            dup2(output_fd[1], STDOUT_FILENO);// step 2
-            execv(resolved_path, argv);       // step 4
-        } else {
-            printf("No Such file or directory!.\n");
-        }
+        close(input_fd[1]);
+        close(output_fd[0]);
+        dup2(input_fd[0], STDIN_FILENO);  // step 1
+        dup2(output_fd[1], STDOUT_FILENO);// step 2
+        execv(resolved_path, argv);       // step 4
+
+        // free the allocated memory.
+        tokens_destroy(exec_tokens);
+        tokens_destroy(tokens);
+        free_argv(ptr_argv);
         exit(0);
     } else {
         write(input_fd[1], message, strlen(message)); // step 3
         wait(&status);
         read(output_fd[0], message, MAX_MESSAGE_LEN);     // step 5
-        free_argv(ptr_argv);
         /* Get the rest of the command and execute it. */
         cmd_exec_prog(rest_tokens, false);
     }
 }
 
 void exec_mode_4(struct tokens *tokens) {
-
-    stdout_redirect(tokens);
-
-    // char *dir_prog = tokens_get_token(tokens, 0);
-    // char *resolved_path = path_resolution(dir_prog);
-    char ***ptr_argv = tokens_to_argv(tokens);
-    char **argv = *ptr_argv;
-    char *resolved_path = *argv;
-
     int status;
-
     pid_t cpid = fork();
     /* 1. Redirect STDIN of child to fd_stdin[0];
      * 2. Parent write message to fd_stdin[1]; */
     if (cpid == 0) {
-        if (resolved_path != NULL) {
-            dup2(input_fd[0], STDIN_FILENO);    // step 1
-            execv(resolved_path, argv);
-        } else {
-            write(input_fd[1], message, strlen(message));
-            printf("No Such file or directory!.\n");
-        }
+        stdout_redirect(tokens);
+        char ***ptr_argv = tokens_to_argv(tokens);
+        char **argv = *ptr_argv;
+        char *resolved_path = *argv;
+
+        dup2(input_fd[0], STDIN_FILENO);    // step 1
+        execv(resolved_path, argv);
+
+        // free the allocated memory.
+        tokens_destroy(tokens);
+        free_argv(ptr_argv);
+
         exit(0);
     } else {
+        write(input_fd[1], message, strlen(message));
         wait(&status);
-        free_argv(ptr_argv);
     }
 }
 
