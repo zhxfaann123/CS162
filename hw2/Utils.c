@@ -76,7 +76,7 @@ struct tokens *tokens_from_start(struct tokens *tokens, int idx_end) {
 }
 
 struct tokens *tokens_from_end(struct tokens *tokens, int idx_begin) {
-    return cut_tokens(tokens, idx_begin, tokens_get_length(tokens));
+    return cut_tokens(tokens, idx_begin, tokens_get_length(tokens) - 1);
 }
 
 void tokens_delete_token(struct tokens *tokens, int idx_kick) {
@@ -84,8 +84,8 @@ void tokens_delete_token(struct tokens *tokens, int idx_kick) {
     for (int i = idx_kick + 1; i < len_tokens; i++) {
         tokens->tokens[i - 1] = tokens->tokens[i];
     }
-    free(tokens->tokens[len_tokens]);
-    tokens->tokens[len_tokens] = NULL;
+    free(tokens->tokens[len_tokens - 1]);
+    // tokens->tokens[len_tokens] = NULL;
     tokens->tokens_length--;
 }
 
@@ -103,6 +103,7 @@ char ***tokens_to_argv(struct tokens *tokens) {
         *(*argv + 1) = (char*) malloc(sizeof(char) * (strlen(elem) + 1));
         strcpy(*(*argv + 1), elem);
     }
+    *(*argv + num_tokens) = NULL;
     return argv;
 }
 
@@ -141,9 +142,11 @@ int get_idx_stdout(struct tokens *tokens) {
 }
 
 void free_argv(char ***ptr_argv) {
-    for (char **ptr = *ptr_argv; *ptr != NULL; ptr++) {
+    char **ptr = *ptr_argv;
+    for (ptr = *ptr_argv; *ptr != NULL; ptr++) {
         free(*ptr);
     }
+    free(*ptr); // Free the NULL pointer which is not freed in the for loop.
     free(*ptr_argv);
     free(ptr_argv);
 }

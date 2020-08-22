@@ -114,12 +114,14 @@ void stdin_redirect(struct tokens* tokens) {
 /* Redirect output to some file. (Destructive to tokens) */
 void stdout_redirect(struct tokens* tokens) {
     int idx_stdout = get_idx_stdout(tokens);
-    if (idx_stdout == -1) {
+    if (idx_stdout != -1) {
         tokens_delete_token(tokens, idx_stdout);
         tokens_delete_token(tokens, idx_stdout + 1);
+        char *filename = tokens_get_token(tokens, idx_stdout + 1);
+        freopen(filename, "w+", stdout);
+    } else {
+        
     }
-    char *filename = tokens_get_token(tokens, idx_stdout + 1);
-    freopen(filename, "w+", stdout);
 }
 
 /* Prints a helpful description for the given command */
@@ -207,7 +209,6 @@ void exec_mode_2(struct tokens *tokens, int idx_split) {
 
         // free the allocated memory.
         tokens_destroy(exec_tokens);
-        tokens_destroy(tokens);
         free_argv(ptr_argv);
 
         /* Get the rest of the command and execute it. */
@@ -377,7 +378,7 @@ int main(unused int argc, unused char *argv[]) {
             fprintf(stdout, "%d: ", ++line_num);
 
         /* Clean up memory */
-        tokens_destroy(tokens);
+        // tokens_destroy(tokens);
     }
     return 0;
 }
