@@ -100,27 +100,60 @@ struct tokens *io_redirect(struct tokens* tokens) {
 }
 
 /* Redirect input to some file. (Destructive to tokens) */
-void stdin_redirect(struct tokens* tokens) {
-    int idx_stdin = get_idx_stdin(tokens);
-    if (idx_stdin != -1) {
-        tokens_delete_token(tokens, idx_stdin);
-        tokens_delete_token(tokens, idx_stdin + 1);
-    }
+struct tokens *stdin_redirect(struct tokens* tokens) {
+    int idx_stdout = get_idx_stdout(tokens);
+    if (idx_stdout != -1) {
+        struct tokens *first_part = tokens_from_start(tokens, idx_stdout - 1);
+        if (tokens_get_length(tokens) > idx_stdout + 1) {
+            struct tokens *second_part = tokens_from_end(tokens, idx_stdout + 1);
+            struct tokens *new_tokens = combine_tokens(first_part, second_part);
+            char *filename = tokens_get_token(tokens, idx_stdout + 1);
+            freopen(filename, "w+", stdin);
 
-    char *filename = tokens_get_token(tokens, idx_stdin + 1);
-    freopen(filename, "r+", stdin);
+            //epilogue
+            destroy_tokens_img(tokens);
+            destroy_tokens_img(first_part);
+            destroy_tokens_img(second_part);
+            return new_tokens;
+        } else {
+            char *filename = tokens_get_token(tokens, idx_stdout + 1);
+            freopen(filename, "w+", stdin);
+
+            //epilogue
+            destroy_tokens_img(tokens);
+            return first_part;
+        }
+    } else {
+        return tokens;
+    }
 }
 
 /* Redirect output to some file. (Destructive to tokens) */
-void stdout_redirect(struct tokens* tokens) {
+struct tokens *stdout_redirect(struct tokens* tokens) {
     int idx_stdout = get_idx_stdout(tokens);
     if (idx_stdout != -1) {
-        tokens_delete_token(tokens, idx_stdout);
-        tokens_delete_token(tokens, idx_stdout + 1);
-        char *filename = tokens_get_token(tokens, idx_stdout + 1);
-        freopen(filename, "w+", stdout);
+        struct tokens *first_part = tokens_from_start(tokens, idx_stdout - 1);
+        if (tokens_get_length(tokens) > idx_stdout + 1) {
+            struct tokens *second_part = tokens_from_end(tokens, idx_stdout + 1);
+            struct tokens *new_tokens = combine_tokens(first_part, second_part);
+            char *filename = tokens_get_token(tokens, idx_stdout + 1);
+            freopen(filename, "w+", stdout);
+
+            //epilogue
+            destroy_tokens_img(tokens);
+            destroy_tokens_img(first_part);
+            destroy_tokens_img(second_part);
+            return new_tokens;
+        } else {
+            char *filename = tokens_get_token(tokens, idx_stdout + 1);
+            freopen(filename, "w+", stdout);
+
+            //epilogue
+            destroy_tokens_img(tokens);
+            return first_part;
+        }
     } else {
-        
+        return tokens;
     }
 }
 
@@ -188,26 +221,29 @@ void exec_mode_1(struct tokens *tokens) {
 void exec_mode_2(struct tokens *tokens, int idx_split) {
     struct tokens *exec_tokens = tokens_from_start(tokens, idx_split - 1);
     struct tokens *rest_tokens = tokens_from_end(tokens, idx_split + 1);
-    tokens_destroy(tokens);
-
-    stdin_redirect(exec_tokens);
-    char ***ptr_argv = tokens_to_argv(exec_tokens);
-    char **argv = *ptr_argv;
-    char *resolved_path = *argv;
-
     int status;
+    char ***ptr_argv;
+    char **argv;
+
     pid_t cpid = fork();
     if (cpid == 0) {
+        // stdout redirection and argv generation.
+        exec_tokens = stdout_redirect(exec_tokens);
+        ptr_argv = tokens_to_argv(exec_tokens);
+        argv = *ptr_argv;
+        char *resolved_path = *argv;
+        // inter-process communication.
         close(output_fd[0]);
         dup2(output_fd[1], STDOUT_FILENO);
         execv(resolved_path, argv);
-        exit(0);
+
+        printf("execv error!\n");
     } else {
         wait(&status);
         close(output_fd[1]);
         read(output_fd[0], message, MAX_MESSAGE_LEN);
 
-        // free the allocated memory.
+        /* free the allocated memory. */
         tokens_destroy(exec_tokens);
         free_argv(ptr_argv);
 
@@ -260,16 +296,17 @@ void exec_mode_3(struct tokens *tokens, int idx_split) {
 }
 
 void exec_mode_4(struct tokens *tokens) {
-    stdout_redirect(tokens);
-    char ***ptr_argv = tokens_to_argv(tokens);
-    char **argv = *ptr_argv;
-    char *resolved_path = *argv;
-
+    char ***ptr_argv;
     int status;
+
     pid_t cpid = fork();
     /* 1. Redirect STDIN of child to fd_stdin[0];
      * 2. Parent write message to fd_stdin[1]; */
     if (cpid == 0) {
+        tokens = stdout_redirect(tokens);
+        ptr_argv = tokens_to_argv(tokens);
+        char **argv = *ptr_argv;
+        char *resolved_path = *argv;
 
         dup2(input_fd[0], STDIN_FILENO);    // step 1
         execv(resolved_path, argv);
@@ -378,7 +415,7 @@ int main(unused int argc, unused char *argv[]) {
             fprintf(stdout, "%d: ", ++line_num);
 
         /* Clean up memory */
-        // tokens_destroy(tokens);
+        tokens_destroy(tokens);
     }
     return 0;
 }

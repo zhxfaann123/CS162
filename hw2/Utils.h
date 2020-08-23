@@ -8,19 +8,33 @@
 /* Reallocate the memory space for string. */
 char *string_relloc(char *string, int *buffer_len, int append_len);
 
-/* Note: None of the following functions are destructive, thus one must destroy
- * the token that is no more use manually. */
+/* Note: All tokens besides the origin token(input by user) are token_img,
+ * The following token image mechanism is based on the idea of 'image':
+ * each new token has the pointer directing to specific strings of the
+ * original tokens struct. To destruct the token_img, please use the
+ * destroy_tokens_img. If and only if one destroy the origin token,
+ * would the string be freed. */
 
-/* Extract a constant part of the token. */
+/* Return the elem of the tokens(the pointer to the string. )*/
+char *tokens_ptr(struct tokens *token, int idx);
+
+/* Initialize a tokens structure. */
+struct tokens *init_tokens_img(int num_para);
+
+/* Destroy a tokens(img) structure. */
+void destroy_tokens_img(struct tokens *token);
+
+/* Cast a part of the tokens to the new_token struct by casting the argv[](pointer to strings.)
+ * the range is [idx_start, idx_end). */
 struct tokens *sub_tokens(struct tokens *token, int idx_start, int idx_end);
 
-/* Combine two tokens to one. */
-struct tokens *combine_token(struct tokens *token_1, struct tokens *tokens_2);
+/* Combine two tokens to one(Destructive to the input tokens.). */
+struct tokens *combine_tokens(struct tokens *token_1, struct tokens *tokens_2);
 
-/* Extract tokens[0, idx_end]. */
+/* Return the image of the  tokens ranging from [0, idx_end). */
 struct tokens *tokens_from_start(struct tokens *tokens, int idx_end);
 
-/* Extract tokens[idx_start, len_tokens]. */
+/* Return the image of the tokens ranging from [idx_begin, get_tokens_length(tokens)) */
 struct tokens *tokens_from_end(struct tokens *tokens, int idx_begin);
 
 /* Note: All of the following functions are destructive. */

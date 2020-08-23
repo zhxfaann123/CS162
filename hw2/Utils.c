@@ -30,53 +30,68 @@ char *string_relloc(char *string, int *buffer_len, int append_len) {
     }
 }
 
-struct tokens *cut_tokens(struct tokens *tokens, int idx_start, int idx_end) {
-    int len_tokens = tokens_get_length(tokens);
-    assert(idx_start >= 0 && idx_end <= len_tokens);
-    assert(idx_start <= idx_end);
+char *tokens_ptr(struct tokens *tokens, int idx) {
+    assert(tokens_get_length(tokens) > idx);
+    return tokens->tokens[idx];
+}
 
-    int buffer_capacity = INIT_BUFFER_LEN;
-    char *buffer = (char*) malloc(sizeof(char) * buffer_capacity);
-    buffer[0] = '\0';
 
-    for (int i = idx_start; i <= idx_end; i++) {
-        char *str = tokens_get_token(tokens, i);
-        string_relloc(buffer, &buffer_capacity, strlen(str));
-        strcat(buffer, str);
-        strcat(buffer, " ");
+struct tokens *init_tokens_img(int num_para) {
+    struct tokens *tokens = (struct tokens*) malloc(sizeof(tokens));
+    tokens->tokens = (char**)malloc(sizeof(char*) * num_para);
+    tokens->tokens_length = num_para;
+    tokens->buffers = NULL;
+    tokens->buffers_length = 0;
+
+    for (int i = 0; i < num_para; i++) {
+        *(tokens->tokens + i) = NULL;
     }
+    return tokens;
+}
 
-    return tokenize(buffer);
+void destroy_tokens_img(struct tokens *tokens) {
+    for (int i = 0; i < tokens_get_length(tokens); i++) {
+        free(tokens->tokens[i]);
+    }
+    free(tokens);
+}
+
+struct tokens *sub_tokens(struct tokens *tokens, int idx_start, int idx_end) {
+    assert(idx_end > idx_start);
+    int num_elem = idx_end - idx_start;
+    struct tokens *tokens_img = init_tokens_img(num_elem);
+
+    int count = 0;
+    for (int i = idx_start; i < idx_end; i++) {
+        tokens_img->tokens[i] = tokens_ptr(tokens, i);
+        count++;
+    }
+    return tokens_img;
 }
 
 struct tokens *combine_token(struct tokens *tokens_1, struct tokens *tokens_2) {
-    int buffer_capacity = INIT_BUFFER_LEN;
-    char *buffer = (char*) malloc(sizeof(char) * buffer_capacity);
-    buffer[0] = '\0';
-
-    for (int i = 1; i <= tokens_get_length(tokens_1); i++) {
-        char *str = tokens_get_token(tokens_1, i);
-        string_relloc(buffer, &buffer_capacity, strlen(str));
-        strcat(buffer, str);
-        strcat(buffer, " ");
+    int token_1_len = tokens_get_length(tokens_1);
+    int token_2_len = tokens_get_length(tokens_2);
+    int sum_token_len = token_1_len + token_2_len;
+    struct tokens *new_tokens = init_tokens_img(sum_token_len);
+    for (int i = 0; i < token_1_len; i++) {
+        new_tokens->tokens[i] = tokens_ptr(tokens_1, i);
     }
 
-    for (int i = 1; i <= tokens_get_length(tokens_2); i++) {
-        char *str = tokens_get_token(tokens_2, i);
-        string_relloc(buffer, &buffer_capacity, strlen(str));
-        strcat(buffer, str);
-        strcat(buffer, " ");
+    int i = 0;
+    for (int i = token_1_len; i < sum_token_len; i++) {
+        new_tokens->tokens[i] = tokens_ptr(tokens_2, i);
+        i++;
     }
-
-    return tokenize(buffer);
+    return new_tokens;
 }
 
 struct tokens *tokens_from_start(struct tokens *tokens, int idx_end) {
-    return cut_tokens(tokens, 0, idx_end);
+    return sub_tokens(tokens, 0, idx_end);
 }
 
 struct tokens *tokens_from_end(struct tokens *tokens, int idx_begin) {
-    return cut_tokens(tokens, idx_begin, tokens_get_length(tokens) - 1);
+    return sub_tokens(tokens, idx_begin, tokens_get_length(tokens));
 }
 
 void tokens_delete_token(struct tokens *tokens, int idx_kick) {
