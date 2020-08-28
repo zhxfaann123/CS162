@@ -63,52 +63,16 @@ fun_desc_t cmd_table[] = {
         {cmd_cd, "cd", "change the working directory."}
 };
 
-
-/* 1. Redirect stdin/stdout by checking '> [file]' or '< [file]' symbols.
-   2. Remove the IO redirection symbols to form the new tokens. */
-struct tokens *io_redirect(struct tokens* tokens) {
-    int len_token = tokens_get_length(tokens);
-    int buffer_len = 64;
-    char* string_buffer = (char*)malloc(sizeof(char) * buffer_len);
-    /* 1st argument would never change. */
-    strcpy(string_buffer, tokens_get_token(tokens, 0));
-    strcat(string_buffer, " ");
-    for (int i = 1; i < len_token; i++) {
-        char *arg = tokens_get_token(tokens, i);
-        // I/O Redirection
-        if (strcmp(arg, ">") == 0) {
-            char *file = tokens_get_token(tokens, i + 1);
-            freopen(file, "w+", stdout);
-            i++;
-            continue;
-        } else if (strcmp(arg, "<") == 0) {
-            char *file = tokens_get_token(tokens, i + 1);
-            freopen(file, "r+", stdin);
-            i++;
-            continue;
-        } else {
-            // '2' is an abitrary number to reserve space for ' ' and '\0';
-            if (strlen(string_buffer) + strlen(arg) + 2 > buffer_len - 1) {
-                buffer_len *= buffer_len;
-                string_buffer = (char *) realloc(string_buffer, buffer_len);
-            }
-            strcat(string_buffer, arg);
-            strcat(string_buffer, " ");
-        }
-    }
-    return tokenize(string_buffer);
-}
-
-/* Redirect input to some file. (Destructive to tokens) */
+/* Redirect input to some file.(Destructive) */
 struct tokens *stdin_redirect(struct tokens* tokens) {
-    int idx_stdout = get_idx_stdout(tokens);
-    if (idx_stdout != -1) {
-        struct tokens *first_part = tokens_from_start(tokens, idx_stdout - 1);
-        if (tokens_get_length(tokens) > idx_stdout + 1) {
-            struct tokens *second_part = tokens_from_end(tokens, idx_stdout + 1);
+    int idx_stdin = get_idx_stdin(tokens);
+    if (idx_stdin != -1) {
+        struct tokens *first_part = tokens_from_start(tokens, idx_stdin);
+        if (tokens_get_length(tokens) > idx_stdin + 2) {
+            struct tokens *second_part = tokens_from_end(tokens, idx_stdin + 2);
             struct tokens *new_tokens = combine_tokens(first_part, second_part);
-            char *filename = tokens_get_token(tokens, idx_stdout + 1);
-            freopen(filename, "w+", stdin);
+            char *filename = tokens_get_token(tokens, idx_stdin + 1);
+            freopen(filename, "r", stdin);
 
             //epilogue
             destroy_tokens_img(tokens);
@@ -116,8 +80,8 @@ struct tokens *stdin_redirect(struct tokens* tokens) {
             destroy_tokens_img(second_part);
             return new_tokens;
         } else {
-            char *filename = tokens_get_token(tokens, idx_stdout + 1);
-            freopen(filename, "w+", stdin);
+            char *filename = tokens_get_token(tokens, idx_stdin + 1);
+            freopen(filename, "r", stdin);
 
             //epilogue
             destroy_tokens_img(tokens);
@@ -128,16 +92,16 @@ struct tokens *stdin_redirect(struct tokens* tokens) {
     }
 }
 
-/* Redirect output to some file. (Destructive to tokens) */
+/* Redirect output to some file.(Destructive) */
 struct tokens *stdout_redirect(struct tokens* tokens) {
     int idx_stdout = get_idx_stdout(tokens);
     if (idx_stdout != -1) {
-        struct tokens *first_part = tokens_from_start(tokens, idx_stdout - 1);
-        if (tokens_get_length(tokens) > idx_stdout + 1) {
-            struct tokens *second_part = tokens_from_end(tokens, idx_stdout + 1);
+        struct tokens *first_part = tokens_from_start(tokens, idx_stdout);
+        if (tokens_get_length(tokens) > idx_stdout + 2) {
+            struct tokens *second_part = tokens_from_end(tokens, idx_stdout + 2);
             struct tokens *new_tokens = combine_tokens(first_part, second_part);
             char *filename = tokens_get_token(tokens, idx_stdout + 1);
-            freopen(filename, "w+", stdout);
+            freopen(filename, "w", stdout);
 
             //epilogue
             destroy_tokens_img(tokens);
@@ -146,7 +110,7 @@ struct tokens *stdout_redirect(struct tokens* tokens) {
             return new_tokens;
         } else {
             char *filename = tokens_get_token(tokens, idx_stdout + 1);
-            freopen(filename, "w+", stdout);
+            freopen(filename, "w", stdout);
 
             //epilogue
             destroy_tokens_img(tokens);
@@ -197,44 +161,44 @@ int cmd_cd(struct tokens *tokens) {
 
 /* execute with no pipeline process ensued. */
 void exec_mode_1(struct tokens *tokens) {
-    struct tokens *exec_tokens = io_redirect(tokens);
-    char ***ptr_argv = tokens_to_argv(exec_tokens);
-    char **argv = *ptr_argv;
-    char *resolved_path = *argv;
-
+    struct tokens *tokens_img = tokens_from_start(tokens, tokens_get_length(tokens)); // Create a image copy
     int status;
 
     pid_t cpid = fork();
     if (cpid == 0) {
+        tokens_img = stdin_redirect(tokens_img);
+        tokens_img = stdout_redirect(tokens_img);
+        char ***ptr_argv = tokens_to_argv(tokens_img);
+        char **argv = *ptr_argv;
+        char *resolved_path = *argv;
         execv(resolved_path, argv);
         exit(0);
     } else {
         wait(&status);
-        // free the allocated memory.
-        tokens_destroy(exec_tokens);
-        tokens_destroy(tokens);
-        free_argv(ptr_argv);
+        destroy_tokens_img(tokens_img);
     }
 }
 
 /* beginning of the pipeline. */
 void exec_mode_2(struct tokens *tokens, int idx_split) {
-    struct tokens *exec_tokens = tokens_from_start(tokens, idx_split - 1);
+    struct tokens *exec_tokens = tokens_from_start(tokens, idx_split);
     struct tokens *rest_tokens = tokens_from_end(tokens, idx_split + 1);
     int status;
     char ***ptr_argv;
     char **argv;
 
+    exec_tokens = stdin_redirect(exec_tokens);
+    ptr_argv = tokens_to_argv(exec_tokens);
+
     pid_t cpid = fork();
     if (cpid == 0) {
         // stdout redirection and argv generation.
-        exec_tokens = stdout_redirect(exec_tokens);
-        ptr_argv = tokens_to_argv(exec_tokens);
         argv = *ptr_argv;
         char *resolved_path = *argv;
         // inter-process communication.
         close(output_fd[0]);
         dup2(output_fd[1], STDOUT_FILENO);
+        close(output_fd[1]);
         execv(resolved_path, argv);
 
         printf("execv error!\n");
@@ -242,9 +206,9 @@ void exec_mode_2(struct tokens *tokens, int idx_split) {
         wait(&status);
         close(output_fd[1]);
         read(output_fd[0], message, MAX_MESSAGE_LEN);
-
+        close(output_fd[0]);
         /* free the allocated memory. */
-        tokens_destroy(exec_tokens);
+        destroy_tokens_img(exec_tokens);
         free_argv(ptr_argv);
 
         /* Get the rest of the command and execute it. */
@@ -256,7 +220,6 @@ void exec_mode_2(struct tokens *tokens, int idx_split) {
 void exec_mode_3(struct tokens *tokens, int idx_split) {
     struct tokens *exec_tokens = tokens_from_start(tokens, idx_split - 1);
     struct tokens *rest_tokens = tokens_from_end(tokens, idx_split + 1);
-    tokens_destroy(tokens);
 
     // char *dir_prog = tokens_get_token(exec_tokens, 0);
     // char *resolved_path = path_resolution(dir_prog);
@@ -277,6 +240,8 @@ void exec_mode_3(struct tokens *tokens, int idx_split) {
         close(output_fd[0]);
         dup2(input_fd[0], STDIN_FILENO);  // step 1
         dup2(output_fd[1], STDOUT_FILENO);// step 2
+        close(input_fd[0]);
+        close(output_fd[1]);
         execv(resolved_path, argv);       // step 4
 
         exit(0);
@@ -308,15 +273,21 @@ void exec_mode_4(struct tokens *tokens) {
         char **argv = *ptr_argv;
         char *resolved_path = *argv;
 
+        close(input_fd[1]);
         dup2(input_fd[0], STDIN_FILENO);    // step 1
+        close(input_fd[0]);
+        // char* message_1 = (char*) malloc(sizeof(char) * MAX_MESSAGE_LEN);
+        // read(STDOUT_FILENO, message_1, MAX_MESSAGE_LEN);
+
         execv(resolved_path, argv);
         exit(0);
     } else {
+        close(input_fd[0]);
         write(input_fd[1], message, strlen(message));
+        close(input_fd[1]);
         wait(&status);
         // free the allocated memory.
-        tokens_destroy(tokens);
-        free_argv(ptr_argv);
+        destroy_tokens_img(tokens);
     }
 }
 
@@ -343,8 +314,6 @@ int cmd_exec_prog(struct tokens *tokens, bool is_begin) {
         exec_mode_4(tokens);
         return 1;
     }
-    // though may not come to this point, it doesn't hurt to add a return statement here.
-    return -1;
 }
 
 /* Looks up the built-in command, if it exists. */
@@ -419,3 +388,39 @@ int main(unused int argc, unused char *argv[]) {
     }
     return 0;
 }
+
+/** Abandoned functions
+
+struct tokens *io_redirect(struct tokens* tokens) {
+    int len_token = tokens_get_length(tokens);
+    int buffer_len = 64;
+    char* string_buffer = (char*)malloc(sizeof(char) * buffer_len);
+
+    strcpy(string_buffer, tokens_get_token(tokens, 0));
+    strcat(string_buffer, " ");
+    for (int i = 1; i < len_token; i++) {
+        char *arg = tokens_get_token(tokens, i);
+        // I/O Redirection
+        if (strcmp(arg, ">") == 0) {
+            char *file = tokens_get_token(tokens, i + 1);
+            freopen(file, "w+", stdout);
+            i++;
+            continue;
+        } else if (strcmp(arg, "<") == 0) {
+            char *file = tokens_get_token(tokens, i + 1);
+            freopen(file, "r+", stdin);
+            i++;
+            continue;
+        } else {
+            // '2' is an abitrary number to reserve space for ' ' and '\0';
+            if (strlen(string_buffer) + strlen(arg) + 2 > buffer_len - 1) {
+                buffer_len *= buffer_len;
+                string_buffer = (char *) realloc(string_buffer, buffer_len);
+            }
+            strcat(string_buffer, arg);
+            strcat(string_buffer, " ");
+        }
+    }
+    return tokenize(string_buffer);
+}
+**/

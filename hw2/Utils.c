@@ -35,9 +35,8 @@ char *tokens_ptr(struct tokens *tokens, int idx) {
     return tokens->tokens[idx];
 }
 
-
 struct tokens *init_tokens_img(int num_para) {
-    struct tokens *tokens = (struct tokens*) malloc(sizeof(tokens));
+    struct tokens *tokens = (struct tokens*) malloc(sizeof(*tokens));
     tokens->tokens = (char**)malloc(sizeof(char*) * num_para);
     tokens->tokens_length = num_para;
     tokens->buffers = NULL;
@@ -50,9 +49,7 @@ struct tokens *init_tokens_img(int num_para) {
 }
 
 void destroy_tokens_img(struct tokens *tokens) {
-    for (int i = 0; i < tokens_get_length(tokens); i++) {
-        free(tokens->tokens[i]);
-    }
+    free(tokens->tokens);
     free(tokens);
 }
 
@@ -63,13 +60,13 @@ struct tokens *sub_tokens(struct tokens *tokens, int idx_start, int idx_end) {
 
     int count = 0;
     for (int i = idx_start; i < idx_end; i++) {
-        tokens_img->tokens[i] = tokens_ptr(tokens, i);
+        tokens_img->tokens[count] = tokens_ptr(tokens, i);
         count++;
     }
     return tokens_img;
 }
 
-struct tokens *combine_token(struct tokens *tokens_1, struct tokens *tokens_2) {
+struct tokens *combine_tokens(struct tokens *tokens_1, struct tokens *tokens_2) {
     int token_1_len = tokens_get_length(tokens_1);
     int token_2_len = tokens_get_length(tokens_2);
     int sum_token_len = token_1_len + token_2_len;
@@ -78,10 +75,10 @@ struct tokens *combine_token(struct tokens *tokens_1, struct tokens *tokens_2) {
         new_tokens->tokens[i] = tokens_ptr(tokens_1, i);
     }
 
-    int i = 0;
+    int count = 0;
     for (int i = token_1_len; i < sum_token_len; i++) {
-        new_tokens->tokens[i] = tokens_ptr(tokens_2, i);
-        i++;
+        new_tokens->tokens[i] = tokens_ptr(tokens_2, count);
+        count++;
     }
     return new_tokens;
 }
@@ -110,13 +107,17 @@ char ***tokens_to_argv(struct tokens *tokens) {
     *argv = (char**) malloc(sizeof(char*) * (num_tokens + 1));
 
     char* dir_prog = path_resolution(tokens_get_token(tokens, 0));
+    if (dir_prog == NULL) {
+        printf("No such file!");
+        exit(0);
+    }
     **argv = (char*) malloc(sizeof(char) * (strlen(dir_prog) + 1));
     strcpy(**argv, dir_prog);
 
     for (int i = 1; i < num_tokens; i++) {
         char *elem = tokens_get_token(tokens, i);
-        *(*argv + 1) = (char*) malloc(sizeof(char) * (strlen(elem) + 1));
-        strcpy(*(*argv + 1), elem);
+        (*argv)[i] = (char*) malloc(sizeof(char) * (strlen(elem) + 1));
+        strcpy(*(*argv + i), elem);
     }
     *(*argv + num_tokens) = NULL;
     return argv;
@@ -157,7 +158,7 @@ int get_idx_stdout(struct tokens *tokens) {
 }
 
 void free_argv(char ***ptr_argv) {
-    char **ptr = *ptr_argv;
+    char **ptr;
     for (ptr = *ptr_argv; *ptr != NULL; ptr++) {
         free(*ptr);
     }
