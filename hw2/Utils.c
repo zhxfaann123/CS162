@@ -212,6 +212,12 @@ char* path_resolution(char *input_addr) {
     }
 }
 
+/* Write the string to the stdin. */
+void write_to_stdin(char* str) {
+    int i = write(STDIN_FILENO, str, strlen(str));
+    printf("%d\n", i);
+}
+
 
 
 

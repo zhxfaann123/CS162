@@ -22,8 +22,6 @@ void exec_mode_2(struct tokens *tokens, int idx_split);
 void exec_mode_3(struct tokens *tokens, int idx_split);
 void exec_mode_4(struct tokens *tokens);
 
-int input_fd[2];
-int output_fd[2];
 char message[MAX_MESSAGE_LEN];
 
 /* Convenience macro to silence compiler warnings about unused function parameters. */
@@ -181,19 +179,20 @@ void exec_mode_1(struct tokens *tokens) {
 
 /* beginning of the pipeline. */
 void exec_mode_2(struct tokens *tokens, int idx_split) {
+    // printf("something");
     struct tokens *exec_tokens = tokens_from_start(tokens, idx_split);
     struct tokens *rest_tokens = tokens_from_end(tokens, idx_split + 1);
     int status;
-    char ***ptr_argv;
-    char **argv;
 
-    exec_tokens = stdin_redirect(exec_tokens);
-    ptr_argv = tokens_to_argv(exec_tokens);
+    int output_fd[2];
+    pipe(output_fd);
 
     pid_t cpid = fork();
     if (cpid == 0) {
         // stdout redirection and argv generation.
-        argv = *ptr_argv;
+        exec_tokens = stdin_redirect(exec_tokens);
+        char ***ptr_argv = tokens_to_argv(exec_tokens);
+        char **argv = *ptr_argv;
         char *resolved_path = *argv;
         // inter-process communication.
         close(output_fd[0]);
@@ -207,10 +206,12 @@ void exec_mode_2(struct tokens *tokens, int idx_split) {
         close(output_fd[1]);
         read(output_fd[0], message, MAX_MESSAGE_LEN);
         close(output_fd[0]);
+        //char* message_1 = (char*) malloc(sizeof(char) * MAX_MESSAGE_LEN);
+        //read(STDIN_FILENO, message_1, MAX_MESSAGE_LEN);
+        //fgets(message_1, MAX_MESSAGE_LEN, stdin);
+
         /* free the allocated memory. */
         destroy_tokens_img(exec_tokens);
-        free_argv(ptr_argv);
-
         /* Get the rest of the command and execute it. */
         cmd_exec_prog(rest_tokens, false);
     }
@@ -218,16 +219,14 @@ void exec_mode_2(struct tokens *tokens, int idx_split) {
 
 /* midst pipeline process. */
 void exec_mode_3(struct tokens *tokens, int idx_split) {
-    struct tokens *exec_tokens = tokens_from_start(tokens, idx_split - 1);
+    struct tokens *exec_tokens = tokens_from_start(tokens, idx_split);
     struct tokens *rest_tokens = tokens_from_end(tokens, idx_split + 1);
-
-    // char *dir_prog = tokens_get_token(exec_tokens, 0);
-    // char *resolved_path = path_resolution(dir_prog);
-    char ***ptr_argv = tokens_to_argv(exec_tokens);
-    char **argv = *ptr_argv;
-    char *resolved_path = *argv;
-
     int status;
+
+    int input_fd[2];
+    int output_fd[2];
+    pipe(input_fd);
+    pipe(output_fd);
 
     pid_t cpid = fork();
     /* 1. Redirect STDIN of child to fd_stdin[0];
@@ -236,25 +235,32 @@ void exec_mode_3(struct tokens *tokens, int idx_split) {
      * 4. Child execute;
      * 5. Parent read message from fd_stdout[0]. */
     if (cpid == 0) {
+        // stdin redirection.
         close(input_fd[1]);
-        close(output_fd[0]);
-        dup2(input_fd[0], STDIN_FILENO);  // step 1
-        dup2(output_fd[1], STDOUT_FILENO);// step 2
+        dup2(input_fd[0], STDIN_FILENO);
         close(input_fd[0]);
+        // stdout redirection.
+        close(output_fd[0]);
+        dup2(output_fd[1], STDOUT_FILENO);// step 2
         close(output_fd[1]);
-        execv(resolved_path, argv);       // step 4
 
+        char ***ptr_argv = tokens_to_argv(exec_tokens);
+        char **argv = *ptr_argv;
+        char *resolved_path = *argv;
+
+        execv(resolved_path, argv);       // step 4
         exit(0);
     } else {
-        write(input_fd[1], message, strlen(message)); // step 3
+        close(input_fd[0]);
+        write(input_fd[1], message, strlen(message));
+        close(input_fd[1]);
+
         wait(&status);
+
         read(output_fd[0], message, MAX_MESSAGE_LEN);     // step 5
-
+        close(output_fd[0]);
         // free the allocated memory.
-        tokens_destroy(exec_tokens);
-        tokens_destroy(tokens);
-        free_argv(ptr_argv);
-
+        destroy_tokens_img(exec_tokens);
         /* Get the rest of the command and execute it. */
         cmd_exec_prog(rest_tokens, false);
     }
@@ -263,6 +269,8 @@ void exec_mode_3(struct tokens *tokens, int idx_split) {
 void exec_mode_4(struct tokens *tokens) {
     char ***ptr_argv;
     int status;
+    int input_fd[2];
+    pipe(input_fd);
 
     pid_t cpid = fork();
     /* 1. Redirect STDIN of child to fd_stdin[0];
@@ -274,11 +282,11 @@ void exec_mode_4(struct tokens *tokens) {
         char *resolved_path = *argv;
 
         close(input_fd[1]);
-        dup2(input_fd[0], STDIN_FILENO);    // step 1
+        dup2(input_fd[0], STDIN_FILENO);
         close(input_fd[0]);
         // char* message_1 = (char*) malloc(sizeof(char) * MAX_MESSAGE_LEN);
-        // read(STDOUT_FILENO, message_1, MAX_MESSAGE_LEN);
-
+        // fgets(message_1, MAX_MESSAGE_LEN, stdin);
+        // read(STDIN_FILENO, message_1, MAX_MESSAGE_LEN);
         execv(resolved_path, argv);
         exit(0);
     } else {
@@ -365,11 +373,6 @@ int main(unused int argc, unused char *argv[]) {
         struct tokens *tokens = tokenize(line);
         /* Find which built-in function to run. */
         int fundex = lookup(tokens_get_token(tokens, 0));
-
-        /* initialize the pipe. */
-        pipe(input_fd);
-        pipe(output_fd);
-
         if (fundex >= 0) {
             cmd_table[fundex].fun(tokens);
         } else {

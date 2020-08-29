@@ -69,3 +69,5 @@ int get_idx_stdout(struct tokens *tokens);
 /* Resolve the abspath by searching the env. of the PATH. */
 char* path_resolution(char *input_addr);
 
+void write_to_stdin(char* str);
+
