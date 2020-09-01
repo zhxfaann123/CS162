@@ -61,6 +61,17 @@ fun_desc_t cmd_table[] = {
         {cmd_cd, "cd", "change the working directory."}
 };
 
+void parent_handler(int signum) {
+    printf("We are in parent handler.\n");
+}
+
+void child_handler(int signum) {
+    printf("We are in child handler.\n");
+}
+
+struct sigaction p_newact, c_newact;
+
+
 /* Redirect input to some file.(Destructive) */
 struct tokens *stdin_redirect(struct tokens* tokens) {
     int idx_stdin = get_idx_stdin(tokens);
@@ -164,6 +175,8 @@ void exec_mode_1(struct tokens *tokens) {
 
     pid_t cpid = fork();
     if (cpid == 0) {
+        setpgrp();
+        sigaction(SIGINT, &c_newact, NULL);
         tokens_img = stdin_redirect(tokens_img);
         tokens_img = stdout_redirect(tokens_img);
         char ***ptr_argv = tokens_to_argv(tokens_img);
@@ -229,11 +242,6 @@ void exec_mode_3(struct tokens *tokens, int idx_split) {
     pipe(output_fd);
 
     pid_t cpid = fork();
-    /* 1. Redirect STDIN of child to fd_stdin[0];
-     * 2. Redirect STDOUT of child to fd_stdout[1];
-     * 3. Parent write message to fd_stdin[1];
-     * 4. Child execute;
-     * 5. Parent read message from fd_stdout[0]. */
     if (cpid == 0) {
         // stdin redirection.
         close(input_fd[1]);
@@ -273,8 +281,6 @@ void exec_mode_4(struct tokens *tokens) {
     pipe(input_fd);
 
     pid_t cpid = fork();
-    /* 1. Redirect STDIN of child to fd_stdin[0];
-     * 2. Parent write message to fd_stdin[1]; */
     if (cpid == 0) {
         tokens = stdout_redirect(tokens);
         ptr_argv = tokens_to_argv(tokens);
@@ -360,6 +366,12 @@ void init_shell() {
 
 int main(unused int argc, unused char *argv[]) {
     init_shell();
+
+    c_newact.sa_handler = child_handler;
+    p_newact.sa_handler = parent_handler;
+    p_newact.sa_flags = SA_NODEFER;
+    c_newact.sa_flags = SA_NODEFER;
+    sigaction(SIGTSTP, &p_newact, NULL);
 
     static char line[4096];
     int line_num = 0;
