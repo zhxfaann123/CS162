@@ -11,6 +11,7 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "my_signal.h"
 #include "tokenizer.h"
 #include "Utils.h"
 
@@ -175,8 +176,12 @@ void exec_mode_1(struct tokens *tokens) {
 
     pid_t cpid = fork();
     if (cpid == 0) {
+        undo_signal();
         setpgrp();
-        sigaction(SIGINT, &c_newact, NULL);
+        printf("The pid of the child is : %d The group id is : %d\n", cpid, getpgrp());
+        printf("The foreground process id is: %d\n", tcgetpgrp(STDIN_FILENO));
+        c_newact.sa_handler = child_handler;
+        sigaction(SIGTSTP, &c_newact, NULL);
         tokens_img = stdin_redirect(tokens_img);
         tokens_img = stdout_redirect(tokens_img);
         char ***ptr_argv = tokens_to_argv(tokens_img);
@@ -185,7 +190,11 @@ void exec_mode_1(struct tokens *tokens) {
         execv(resolved_path, argv);
         exit(0);
     } else {
+        signal(SIGTTOU, SIG_IGN);
+        setpgid(cpid, cpid);
+        tcsetpgrp(STDIN_FILENO, cpid);
         wait(&status);
+        tcsetpgrp(STDIN_FILENO, getpid());
         destroy_tokens_img(tokens_img);
     }
 }
@@ -369,9 +378,11 @@ int main(unused int argc, unused char *argv[]) {
 
     c_newact.sa_handler = child_handler;
     p_newact.sa_handler = parent_handler;
-    p_newact.sa_flags = SA_NODEFER;
-    c_newact.sa_flags = SA_NODEFER;
+    // p_newact.sa_flags = SA_NODEFER;
+    // c_newact.sa_flags = SA_NODEFER;
     sigaction(SIGTSTP, &p_newact, NULL);
+
+    // ign_signal();
 
     static char line[4096];
     int line_num = 0;

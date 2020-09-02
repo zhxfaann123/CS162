@@ -1,0 +1,3 @@
+/home/xiaofeng/CLionProjects/CS162/hw2/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/xiaofeng/CLionProjects/CS162/hw2/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/xiaofeng/CLionProjects/CS162/hw2/cmake-build-debug/CMakeFiles/hw2.dir

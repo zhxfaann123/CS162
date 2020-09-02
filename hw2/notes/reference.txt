@@ -1,0 +1,12 @@
+Issues about child process debug via GDB.
+https://stackoverflow.com/questions/6223786/how-can-i-switch-between-different-processes-fork-ed-in-gdb/6223890
+
+
+Issues about pipe/dup2/exec.
+https://stackoverflow.com/questions/33884291/pipes-dup2-and-exec
+
+Parent and child share its stdin file descriptor.
+https://stackoverflow.com/questions/28461019/separate-stdin-between-parent-and-child-process
+
+Usage of tcsetpgid
+https://stackoverflow.com/questions/5341220/how-do-i-get-tcsetpgrp-to-work-in-c

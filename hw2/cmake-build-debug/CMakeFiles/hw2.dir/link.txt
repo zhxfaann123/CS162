@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/hw2.dir/shell.c.o CMakeFiles/hw2.dir/tokenizer.c.o CMakeFiles/hw2.dir/Utils.c.o CMakeFiles/hw2.dir/my_signal.c.o  -o hw2 

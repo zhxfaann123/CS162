@@ -1,0 +1,42 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/xiaofeng/CLionProjects/CS162/hw2/Utils.h
+
+/home/xiaofeng/CLionProjects/CS162/hw2/shell.c
+ctype.h
+-
+errno.h
+-
+fcntl.h
+-
+stdbool.h
+-
+stdio.h
+-
+stdlib.h
+-
+string.h
+-
+sys/types.h
+-
+signal.h
+-
+sys/wait.h
+-
+termios.h
+-
+unistd.h
+-
+tokenizer.h
+/home/xiaofeng/CLionProjects/CS162/hw2/tokenizer.h
+Utils.h
+/home/xiaofeng/CLionProjects/CS162/hw2/Utils.h
+
+/home/xiaofeng/CLionProjects/CS162/hw2/tokenizer.h
+
