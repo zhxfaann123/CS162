@@ -1,7 +1,6 @@
 Issues about child process debug via GDB.
 https://stackoverflow.com/questions/6223786/how-can-i-switch-between-different-processes-fork-ed-in-gdb/6223890
 
-
 Issues about pipe/dup2/exec.
 https://stackoverflow.com/questions/33884291/pipes-dup2-and-exec
 
@@ -10,3 +9,13 @@ https://stackoverflow.com/questions/28461019/separate-stdin-between-parent-and-c
 
 Usage of tcsetpgid
 https://stackoverflow.com/questions/5341220/how-do-i-get-tcsetpgrp-to-work-in-c
+
+signal handler may not survive after execv!
+https://stackoverflow.com/questions/2333637/is-it-possible-to-signal-handler-to-survive-after-exec
+https://stackoverflow.com/questions/35976496/sigactions-signal-handler-not-called-in-child-process
+
+process关系
+https://www.cnblogs.com/cthon/p/12911514.html
+
+brown shell manuscript
+https://cs.brown.edu/courses/csci0330/docs/proj/shell2.pdf

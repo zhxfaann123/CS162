@@ -12,14 +12,14 @@ void handler() {
 }
 
 int main(int argc, char *argv[]) {
-    //my_sig.sa_handler = handler;
-    //my_sig.sa_flags = 0;
-    //sigaction(SIGTSTP, &my_sig, NULL);
-
+    my_sig.sa_handler = handler;
+    my_sig.sa_flags = 0;
+    sigaction(SIGTSTP, &my_sig, NULL);
+    sleep(10);
     //char *message = (char*) malloc(sizeof(char) * (MAX_BUFFER_LEN + 1));
     //fread(message, 1, MAX_BUFFER_LEN, stdin);
     //printf("The stdin is: %s", message);
-    printf("The pgid is : %d The foreground pgid is %d\n", getpgrp(), tcgetpgrp(STDIN_FILENO));
+    // printf("The pgid is : %d The foreground pgid is %d\n", getpgrp(), tcgetpgrp(STDIN_FILENO));
     /*
     printf("We are in the print_stdin, and following is the output of the formal process:\n");
     printf("argc = %d\n", argc);

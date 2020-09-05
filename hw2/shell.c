@@ -181,7 +181,9 @@ void exec_mode_1(struct tokens *tokens) {
         printf("The pid of the child is : %d The group id is : %d\n", cpid, getpgrp());
         printf("The foreground process id is: %d\n", tcgetpgrp(STDIN_FILENO));
         c_newact.sa_handler = child_handler;
+        c_newact.sa_flags = 0;
         sigaction(SIGTSTP, &c_newact, NULL);
+        // kill(getpid(), SIGTSTP);
         tokens_img = stdin_redirect(tokens_img);
         tokens_img = stdout_redirect(tokens_img);
         char ***ptr_argv = tokens_to_argv(tokens_img);
@@ -190,10 +192,13 @@ void exec_mode_1(struct tokens *tokens) {
         execv(resolved_path, argv);
         exit(0);
     } else {
-        signal(SIGTTOU, SIG_IGN);
         setpgid(cpid, cpid);
         tcsetpgrp(STDIN_FILENO, cpid);
-        wait(&status);
+        tcsetpgrp(STDOUT_FILENO, cpid);
+        // printf("before wating!\n");
+        waitpid(cpid, &status, WUNTRACED);
+        // wait(&status);
+        // printf("already waited!\n");
         tcsetpgrp(STDIN_FILENO, getpid());
         destroy_tokens_img(tokens_img);
     }
@@ -376,13 +381,13 @@ void init_shell() {
 int main(unused int argc, unused char *argv[]) {
     init_shell();
 
-    c_newact.sa_handler = child_handler;
-    p_newact.sa_handler = parent_handler;
+    // c_newact.sa_handler = child_handler;
+    // p_newact.sa_handler = parent_handler;
     // p_newact.sa_flags = SA_NODEFER;
     // c_newact.sa_flags = SA_NODEFER;
     sigaction(SIGTSTP, &p_newact, NULL);
 
-    // ign_signal();
+    ign_signal();
 
     static char line[4096];
     int line_num = 0;

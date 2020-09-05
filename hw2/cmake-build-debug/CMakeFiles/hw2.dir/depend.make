@@ -5,7 +5,11 @@ CMakeFiles/hw2.dir/Utils.c.o: ../Utils.c
 CMakeFiles/hw2.dir/Utils.c.o: ../Utils.h
 CMakeFiles/hw2.dir/Utils.c.o: ../tokenizer.h
 
+CMakeFiles/hw2.dir/my_signal.c.o: ../my_signal.c
+CMakeFiles/hw2.dir/my_signal.c.o: ../my_signal.h
+
 CMakeFiles/hw2.dir/shell.c.o: ../Utils.h
+CMakeFiles/hw2.dir/shell.c.o: ../my_signal.h
 CMakeFiles/hw2.dir/shell.c.o: ../shell.c
 CMakeFiles/hw2.dir/shell.c.o: ../tokenizer.h
 

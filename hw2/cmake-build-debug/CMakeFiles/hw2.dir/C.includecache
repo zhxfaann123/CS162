@@ -8,6 +8,10 @@
 
 /home/xiaofeng/CLionProjects/CS162/hw2/Utils.h
 
+/home/xiaofeng/CLionProjects/CS162/hw2/my_signal.h
+signal.h
+/home/xiaofeng/CLionProjects/CS162/hw2/signal.h
+
 /home/xiaofeng/CLionProjects/CS162/hw2/shell.c
 ctype.h
 -
@@ -33,6 +37,8 @@ termios.h
 -
 unistd.h
 -
+my_signal.h
+/home/xiaofeng/CLionProjects/CS162/hw2/my_signal.h
 tokenizer.h
 /home/xiaofeng/CLionProjects/CS162/hw2/tokenizer.h
 Utils.h

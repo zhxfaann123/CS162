@@ -5,8 +5,12 @@ CMakeFiles/hw2.dir/Utils.c.o
  /home/xiaofeng/CLionProjects/CS162/hw2/Utils.c
  /home/xiaofeng/CLionProjects/CS162/hw2/Utils.h
  /home/xiaofeng/CLionProjects/CS162/hw2/tokenizer.h
+CMakeFiles/hw2.dir/my_signal.c.o
+ /home/xiaofeng/CLionProjects/CS162/hw2/my_signal.c
+ /home/xiaofeng/CLionProjects/CS162/hw2/my_signal.h
 CMakeFiles/hw2.dir/shell.c.o
  /home/xiaofeng/CLionProjects/CS162/hw2/Utils.h
+ /home/xiaofeng/CLionProjects/CS162/hw2/my_signal.h
  /home/xiaofeng/CLionProjects/CS162/hw2/shell.c
  /home/xiaofeng/CLionProjects/CS162/hw2/tokenizer.h
 CMakeFiles/hw2.dir/tokenizer.c.o
