@@ -267,7 +267,8 @@ void serve_forever(int *socket_number, void (*request_handler)(int)) {
    */
 
   /* PART 1 BEGIN */
-
+  bind(*socket_number, (struct sockaddr*) &server_address, sizeof(struct sockaddr));
+  listen(*socket_number, 1024);
   /* PART 1 END */
   printf("Listening on port %d...\n", server_port);
 
