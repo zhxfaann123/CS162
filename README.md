@@ -1,4 +1,4 @@
 # CS162
 All code works of CS162(self-teaching)
 
-To be continued
+Finished: hw0/hw1/hw2
